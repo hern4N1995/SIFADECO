@@ -1,0 +1,257 @@
+--Crear base de datos
+CREATE DATABASE sistema_faenasDB;
+
+--Crear tablas de faena
+
+
+CREATE TABLE IF NOT EXISTS provincia(
+    id_provincia SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL
+);
+
+
+
+CREATE TABLE IF NOT EXISTS categoria_especie(
+    id_cat_especie SERIAL PRIMARY KEY,
+    descripcion VARCHAR(25) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tipo_parte_deco(
+    id_tipo_parte SERIAL PRIMARY KEY,
+    nombre_tipo_parte VARCHAR(100) NOT NULL,
+    estado BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS productor(
+	id_productor SERIAL PRIMARY KEY,
+	cuit VARCHAR(30),
+	nombre VARCHAR(50),
+    estado BOOLEAN DEFAULT True,
+    creado_en TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS veterinario (
+    id_veterinario SERIAL PRIMARY KEY,
+    nombre_vet VARCHAR(50) NOT NULL,
+	apellido_vet VARCHAR(50) NOT NULL,
+    matricula VARCHAR(20) NOT NULL,
+	dni INTEGER NOT NULL,  
+    email VARCHAR(100) NOT NULL,
+	n_telefono BIGINT,
+    estado BOOLEAN DEFAULT TRUE,           -- TRUE = activo / FALSE = inactivo
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS planta(
+    id_planta SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    fecha_habilitacion DATE,
+    norma_legal varchar(255),
+    estado BOOLEAN DEFAULT TRUE,
+    id_provincia INTEGER,
+    direccion VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS tipo_parte_deco(
+    id_tipo_parte SERIAL PRIMARY KEY,
+    nombre_tipo_parte VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS departamento(
+	id_departamento SERIAL PRIMARY KEY,
+	id_provincia INTEGER NOT NULL,
+	nombre_departamento VARCHAR(50),
+
+	CONSTRAINT FK_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
+);
+
+CREATE TABLE IF NOT EXISTS especie(
+    id_especie SERIAL PRIMARY KEY,
+    id_cat_especie SMALLINT NOT NULL,
+    descripcion VARCHAR(20) NOT NULL,
+
+    CONSTRAINT FK_id_categoria_especie FOREIGN KEY (id_cat_especie) REFERENCES categoria_especie(id_cat_especie)
+);
+
+
+
+CREATE TABLE IF NOT EXISTS titular_faena (
+    id_titular_faena SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    id_provincia SMALLINT NOT NULL,
+    localidad VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255),
+    documento VARCHAR(50),
+    CONSTRAINT fk_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
+);
+
+CREATE TABLE IF NOT EXISTS parte_decomisada(
+    id_parte_decomisada SERIAL PRIMARY KEY,
+    nombre_parte VARCHAR(100) NOT NULL,
+	id_tipo_parte INTEGER NOT NULL,
+
+	CONSTRAINT FK_id_tipo_parte FOREIGN KEY (id_tipo_parte) REFERENCES tipo_parte_deco(id_tipo_parte)
+);
+
+
+
+CREATE TABLE IF NOT EXISTS tropa (
+    id_tropa SERIAL PRIMARY KEY,
+    dte_dtu VARCHAR(30) NOT NULL,
+    guia_policial VARCHAR(30) NOT NULL,
+    fecha TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    id_titular_faena INTEGER,
+    n_tropa INTEGER NOT NULL,
+    id_departamento INTEGER NOT NULL,
+    id_productor INTEGER,
+    id_planta INTEGER NOT NULL,
+
+    -- Foreign Keys
+    CONSTRAINT fk_id_titular_faena FOREIGN KEY (id_titular_faena) REFERENCES titular_faena(id_titular_faena),
+    CONSTRAINT fk_id_departamento FOREIGN KEY (id_departamento) REFERENCES departamento(id_departamento),
+    CONSTRAINT fk_id_productor FOREIGN KEY (id_productor) REFERENCES productor(id_productor),
+    CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
+);
+
+
+CREATE TABLE IF NOT EXISTS tropa_detalle(
+    id_tropa_detalle SERIAL INTEGER PRIMARY KEY,
+    id_cat_especie INTEGER NOT NULL,
+    id_tropa INTEGER NOT NULL,
+    id_especie SMALLINT NOT NULL,
+    cantidad SMALLINT NOT NULL,
+
+
+    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa(id_tropa),
+    CONSTRAINT FK_id_especie FOREIGN KEY (id_especie) REFERENCES especie(id_especie)
+);
+
+CREATE TABLE IF NOT EXISTS faena (
+    id_faena SERIAL PRIMARY KEY,
+    id_tropa_detalle INTEGER NOT NULL,
+    fecha_faena DATE NOT NULL,
+    cantidad_faena SMALLINT NOT NULL,
+
+    CONSTRAINT FK_id_tropa_detalle FOREIGN KEY (id_tropa_detalle) REFERENCES tropa_detalle(id_tropa_detalle)
+);
+
+CREATE TABLE IF NOT EXISTS faena_veterinario (
+    id_faena_veterinario SERIAL PRIMARY KEY,
+    id_faena INTEGER NOT NULL,
+	id_veterinario INTEGER NOT NULL,
+
+	CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
+	CONSTRAINT FK_id_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario(id_veterinario)
+);
+
+-- Crear tabla intermedia
+CREATE TABLE IF NOT EXISTS planta_veterinario (
+    id_planta_veterinario SERIAL PRIMARY KEY,  -- ID artificial para flexibilidad
+    id_planta INT NOT NULL,
+    id_veterinario INT NOT NULL UNIQUE,  -- Un veterinario no puede repetirse en más de una planta
+    fecha_asignacion DATE DEFAULT CURRENT_DATE, -- opcional, para control histórico
+    
+    -- Relaciones
+    CONSTRAINT fk_planta FOREIGN KEY (id_planta) REFERENCES planta (id_planta) ON DELETE CASCADE,    
+    CONSTRAINT fk_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario (id_veterinario) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS decomiso(
+    id_decomiso SERIAL INTEGER PRIMARY KEY,
+    id_faena INTEGER NOT NULL,
+    cantidad_afectados SMALLINT,
+    fecha_decomiso TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
+);
+
+
+
+
+CREATE TABLE IF NOT EXISTS parte_deco_afeccion (
+    id_parte_decomiso INT NOT NULL,
+    id_afeccion INT NOT NULL,
+    PRIMARY KEY (id_parte_decomiso, id_afeccion),
+    CONSTRAINT fk_parte_decomiso FOREIGN KEY (id_parte_decomiso) 
+        REFERENCES parte_decomiso (id_parte_decomiso) ON DELETE CASCADE,
+    CONSTRAINT fk_afeccion FOREIGN KEY (id_afeccion) 
+        REFERENCES afeccion (id_afeccion) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE IF NOT EXISTS remanente_tropa (
+    id_remanente SERIAL PRIMARY KEY,
+    id_tropa INTEGER NOT NULL,
+    /*dte_dtu seria lo mejor para un remanente no?*/
+    cantidad_remanente SMALLINT NOT NULL, -- animales no faenados
+    motivo VARCHAR(100), -- opcional, ej: "No aptos", "Destino distinto", "Faena parcial"
+    fecha_registro DATE DEFAULT CURRENT_DATE,
+
+    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa(id_tropa)
+);
+/*Esta tabla permite registrar por tropa cuántos animales quedaron sin faenar, por qué motivo y cuándo.
+*/
+
+
+CREATE TABLE IF NOT EXISTS rol_usuario(
+    id_rol SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL
+)
+
+CREATE TABLE IF NOT EXISTS usuario (
+    id_usuario SERIAL PRIMARY KEY,
+    dni INTEGER NOT NULL,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    contrasenia VARCHAR(255) NOT NULL,        -- encriptado (bcrypt)
+    email VARCHAR(100) NOT NULL UNIQUE,    -- único para login
+    estado BOOLEAN DEFAULT TRUE,           -- TRUE = activo / FALSE = inactivo
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
+    id_rol INTEGER NOT NULL,
+    id_planta INTEGER,
+    n_telefono BIGINT,
+
+    CONSTRAINT fk_id_rol FOREIGN KEY (id_rol) REFERENCES rol_usuario(id_rol),
+    CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
+);
+
+CREATE TABLE especie_categoria (
+  id_especie INTEGER REFERENCES especie(id_especie),
+  id_cat_especie INTEGER REFERENCES categoria_especie(id_cat_especie),
+  PRIMARY KEY (id_especie, id_cat_especie)
+);
+
+CREATE TABLE IF NOT EXISTS decomiso_detalle (
+    id_decomiso_detalle SERIAL PRIMARY KEY,
+    id_decomiso INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL,
+    animales_afectados INTEGER,
+    observaciones TEXT,
+    peso_kg NUMERIC(10,2) NOT NULL,
+    id_afeccion INTEGER NOT NULL,
+    destino_decomiso VARCHAR(100) NOT NULL,
+    id_parte_decomisada INTEGER NOT NULL,
+
+
+    CONSTRAINT fk_id_decomiso FOREIGN KEY (id_decomiso)
+        REFERENCES decomiso(id_decomiso) ON DELETE CASCADE,
+        
+    CONSTRAINT fk_id_parte_decomisada FOREIGN KEY (id_parte_decomisada)
+        REFERENCES parte_decomiso(id_parte_decomiso) ON DELETE CASCADE
+);
+
+
+
+
+-------CONSULTAS---------
+
+--CARGAR DATOS a la tablaX
+--INSERT INTO provincia (descripcion) VALUES ('Capital');
+INSERT INTO provincia (descripcion) VALUES ('Corrientes');
+
+
+--ELIMINAR DATOS a la tablaX
+--DELETE FROM provincia WHERE (descripcion) = 'Capital';
+

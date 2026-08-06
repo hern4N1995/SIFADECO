@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Montserrat', sans-serif;
+  }
+  body {
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  /* Ocultar iconos nativos del navegador en campos de contraseña */
+  input[type="password"]::-webkit-outer-spin-button,
+  input[type="password"]::-webkit-inner-spin-button,
+  input[type="password"]::-webkit-credentials-auto-fill-button {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    display: none !important;
+    margin: 0 !important;
+  }
+
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none !important;
+  }
+
+  /* Prevenir que el navegador muestre su propio toggle */
+  input[type="password"] {
+    -webkit-text-security: disc;
+  }
+}
