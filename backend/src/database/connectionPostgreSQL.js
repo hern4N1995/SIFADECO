@@ -1,9 +1,4 @@
-import pg from "pg";
+const pool = require('../db');
 
-export const pool= new pg.Pool({
-    host:"localhost",
-    port:5432,
-    database:"sistema_faenasdb",
-    user:"postgres",
-    password:"sm2224mptt"
-});
+module.exports = pool;
+module.exports.pool = pool;
