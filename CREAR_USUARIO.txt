@@ -1,0 +1,193 @@
+================================================================================
+                    GUÍA: CREAR USUARIO ADMIN EN DOCKER
+================================================================================
+
+SITUACIÓN: Base de datos vacía en Docker, necesitas usuario admin para ingresar
+
+✅ BUENAS NOTICIAS:
+- BD vacía no es problema
+- Usuario admin se puede crear manualmente
+- JWT no tendrá problemas
+- Hash está cubierto con bcrypt
+
+================================================================================
+                  CÓMO CREAR USUARIO ADMIN AL MONTAR EN DOCKER
+================================================================================
+
+OPCIÓN 1: CREAR USUARIO ANTES DE LEVANTAR DOCKER (RECOMENDADA)
+─────────────────────────────────────────────────────────────
+
+PASO 1: Generar el hash bcrypt de tu contraseña
+─────────────────────────────────────────────────
+
+Ejecuta en Node.js (en terminal):
+
+  const bcrypt = require('bcryptjs');
+  
+  (async () => {
+    const hash = await bcrypt.hash('Ministerio123!', 10);
+    console.log(hash); // Copia este valor
+  })();
+
+Esto generará algo como:
+  $2a$10$nOUIs5kJ7naTuTFkWK1He.IjZAgcg7sMgkQkbX8NvVz4Z8XQ/XJZK
+
+
+PASO 2: Insertar usuario en init.sql
+──────────────────────────────────────
+
+Abre el archivo: db-init/init.sql
+
+Al final del archivo, agrega:
+
+  -- Usuario admin
+  INSERT INTO usuario (dni, nombre, apellido, email, contrasenia, id_rol, estado)
+  VALUES (
+    '12345678',
+    'Admin',
+    'Sistema',
+    'admin@sifadeco.cl',
+    '$2a$10$nOUIs5kJ7naTuTFkWK1He.IjZAgcg7sMgkQkbX8NvVz4Z8XQ/XJZK',  -- Tu hash aquí
+    1,  -- id_rol admin
+    true
+  );
+
+
+PASO 3: Levantar Docker
+──────────────────────
+
+  docker-compose up -d
+
+Espera a que la BD esté lista (healthcheck debe pasar).
+
+
+PASO 4: Ingresar a la aplicación
+─────────────────────────────────
+
+Email:    admin@sifadeco.cl
+Password: Ministerio123!
+
+
+================================================================================
+
+OPCIÓN 2: CREAR USUARIO DESPUÉS DE LEVANTAR DOCKER
+────────────────────────────────────────────────────
+
+Si ya levantaste Docker sin usuario:
+
+  # Conéctate al contenedor backend
+  docker exec -it sifadeco_backend bash
+  
+  # Ejecuta el script
+  node scripts/createUser.js
+
+El script createUser.js ya tiene usuario de ejemplo configurado.
+
+================================================================================
+                        EXPLICACIÓN DEL FLUJO JWT + HASH
+================================================================================
+
+EN EL LOGIN:
+───────────
+
+1. Usuario envía: { email: "admin@sifadeco.cl", password: "Ministerio123!" }
+
+2. Backend busca usuario en BD:
+   const usuario = await pool.query('SELECT * FROM usuario WHERE email = ?');
+
+3. Compara la contraseña enviada con el HASH en BD:
+   const esValida = await bcrypt.compare(password, usuario.contrasenia);
+   bcrypt.compare('Ministerio123!', '$2a$10$...')
+   → true si coincide
+   → false si no coincide
+
+4. Si es válida, genera JWT (NO necesita bcrypt):
+   const token = jwt.sign(
+     { id_usuario: usuario.id_usuario, rol: usuario.id_rol },
+     process.env.JWT_SECRET,  // ← Esto DEBE estar en .env
+     { expiresIn: '30d' }
+   );
+
+5. Devuelve el token al cliente (guarda en localStorage)
+
+
+EN PETICIONES POSTERIORES:
+─────────────────────────
+
+1. Cliente envía el token en headers:
+   Authorization: Bearer eyJhbGciOi...
+
+2. Backend verifica el token (no toca BD, no toca bcrypt):
+   const decoded = jwt.verify(token, process.env.JWT_SECRET);
+   
+   Si JWT_SECRET coincide → ✅ Válido, permite la acción
+   Si JWT_SECRET NO coincide → ❌ Rechazado, error 401
+
+================================================================================
+                           PUNTOS CRÍTICOS EN DOCKER
+================================================================================
+
+1. VARIABLE JWT_SECRET DEBE ESTAR CONFIGURADA
+   ───────────────────────────────────────────
+
+   En .env:
+   JWT_SECRET=tu_secreto_super_seguro_aqui
+
+   En docker-compose.yml ya está:
+   JWT_SECRET: ${JWT_SECRET}
+
+   ⚠️ Si no configuras JWT_SECRET → ❌ Login fallará
+
+
+2. BASE DE DATOS VACÍA = NORMAL
+   ─────────────────────────────
+
+   El init.sql solo crea la estructura:
+   
+   CREATE TABLE usuario (
+     id_usuario SERIAL PRIMARY KEY,
+     email VARCHAR(255) UNIQUE,
+     contrasenia VARCHAR(255),  -- Acá va el HASH (nunca el password en texto)
+     id_rol INT,
+     estado BOOLEAN DEFAULT true,
+     ...
+   );
+   
+   Luego insertas el usuario admin.
+
+
+3. NO NECESITAS HACER NADA ESPECIAL CON CONTRASEÑAS
+   ──────────────────────────────────────────────────
+
+   ❌ NUNCA guardes:     password = "Ministerio123!"
+   ✅ SIEMPRE guarda:    contrasenia = bcrypt.hash("Ministerio123!", 10)
+   ✅ Para verificar:    bcrypt.compare("Ministerio123!", contrasenia_en_bd)
+
+================================================================================
+                          CHECKLIST PARA TU DEPLOY
+================================================================================
+
+  [ ] Configurar .env con JWT_SECRET
+  [ ] Generar hash bcrypt para contraseña admin
+  [ ] Insertar usuario admin en init.sql CON EL HASH
+  [ ] Hacer docker-compose up
+  [ ] Esperar a que BD esté lista (healthcheck)
+  [ ] Intentar login con admin@sifadeco.cl / Ministerio123!
+  [ ] Si funciona, crear más usuarios desde la app (o más INSERTs en init.sql)
+
+================================================================================
+                           RESUMEN RÁPIDO
+================================================================================
+
+El hash (bcrypt) se usa SOLO para:
+  - Guardar contraseña en BD (HASH, no texto plano)
+  - Verificar contraseña en login (compare)
+
+El JWT se usa SOLO para:
+  - Autorizar peticiones posteriores
+  - Verificar identidad sin tocar BD
+
+No hay conflicto entre bcrypt y JWT. Trabajan en etapas diferentes.
+Tu aplicación NO tendrá problemas con esto en Docker.
+
+================================================================================
