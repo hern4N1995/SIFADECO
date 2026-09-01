@@ -17,6 +17,8 @@ const obtenerPlantas = async (req, res) => {
         p.nombre,
         p.id_provincia,
         pr.descripcion AS nombre_provincia,
+        p.id_departamento,
+        d.nombre_departamento AS nombre_departamento,
         p.direccion,
         p.cuit,
         p.fecha_habilitacion,
@@ -24,6 +26,7 @@ const obtenerPlantas = async (req, res) => {
         p.estado
       FROM planta p
       LEFT JOIN provincia pr ON p.id_provincia = pr.id_provincia
+      LEFT JOIN departamento d ON p.id_departamento = d.id_departamento
       ORDER BY p.id_planta;
     `);
     res.json(result.rows);
@@ -38,6 +41,7 @@ const crearPlanta = async (req, res) => {
   const {
     nombre,
     id_provincia,
+    id_departamento,
     direccion,
     cuit,
     fecha_habilitacion,
@@ -52,17 +56,18 @@ const crearPlanta = async (req, res) => {
   }
 
   try {
-    // Intentar insertar con CUIT primero
+    // Intentar insertar con CUIT y departamento
     const insert = await pool.query(
       `INSERT INTO planta (
-        nombre, id_provincia, direccion, cuit,
+        nombre, id_provincia, id_departamento, direccion, cuit,
         fecha_habilitacion, norma_legal, estado
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING 
         id_planta AS id,
         nombre,
         id_provincia,
+        id_departamento,
         direccion,
         cuit,
         fecha_habilitacion,
@@ -71,6 +76,7 @@ const crearPlanta = async (req, res) => {
       [
         nombre.trim(),
         id_provincia,
+        id_departamento || null,
         direccion?.trim() || '',
         limpiarCUIT(cuit),
         fecha_habilitacion,
@@ -86,14 +92,15 @@ const crearPlanta = async (req, res) => {
       try {
         const insertFallback = await pool.query(
           `INSERT INTO planta (
-            nombre, id_provincia, direccion,
+            nombre, id_provincia, id_departamento, direccion,
             fecha_habilitacion, norma_legal, estado
           )
-          VALUES ($1, $2, $3, $4, $5, $6)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           RETURNING 
             id_planta AS id,
             nombre,
             id_provincia,
+            id_departamento,
             direccion,
             fecha_habilitacion,
             norma_legal,
@@ -101,6 +108,7 @@ const crearPlanta = async (req, res) => {
           [
             nombre.trim(),
             id_provincia,
+            id_departamento || null,
             direccion?.trim() || '',
             fecha_habilitacion,
             norma_legal?.trim() || '',
@@ -125,6 +133,7 @@ const modificarPlanta = async (req, res) => {
   const {
     nombre,
     id_provincia,
+    id_departamento,
     direccion,
     cuit,
     fecha_habilitacion,
@@ -135,7 +144,7 @@ const modificarPlanta = async (req, res) => {
   try {
     // Obtener datos actuales si no se envían en la solicitud
     const current = await pool.query(
-      `SELECT nombre, id_provincia, direccion, cuit, fecha_habilitacion, norma_legal, estado
+      `SELECT nombre, id_provincia, id_departamento, direccion, cuit, fecha_habilitacion, norma_legal, estado
        FROM planta WHERE id_planta = $1`,
       [id]
     );
@@ -149,27 +158,30 @@ const modificarPlanta = async (req, res) => {
     // Usar valores enviados o mantener los actuales
     const nuevoNombre = nombre !== undefined ? nombre?.trim() || '' : currentData.nombre;
     const nuevaProvin = id_provincia !== undefined ? id_provincia : currentData.id_provincia;
+    const nuevoDepto = id_departamento !== undefined ? id_departamento : currentData.id_departamento;
     const nuevaDireccion = direccion !== undefined ? direccion?.trim() || '' : currentData.direccion;
     const nuevoCUIT = cuit !== undefined ? limpiarCUIT(cuit) : currentData.cuit;
     const nuevaFecha = fecha_habilitacion !== undefined ? fecha_habilitacion : currentData.fecha_habilitacion;
     const nuevaNorma = norma_legal !== undefined ? norma_legal?.trim() || '' : currentData.norma_legal;
     const nuevoEstado = estado !== undefined ? (typeof estado === 'boolean' ? estado : true) : currentData.estado;
 
-    // Intentar actualizar con CUIT primero
+    // Intentar actualizar con CUIT y departamento
     const update = await pool.query(
       `UPDATE planta
        SET nombre = $1,
            id_provincia = $2,
-           direccion = $3,
-           cuit = $4,
-           fecha_habilitacion = $5,
-           norma_legal = $6,
-           estado = $7
-       WHERE id_planta = $8
+           id_departamento = $3,
+           direccion = $4,
+           cuit = $5,
+           fecha_habilitacion = $6,
+           norma_legal = $7,
+           estado = $8
+       WHERE id_planta = $9
        RETURNING 
          id_planta AS id,
          nombre,
          id_provincia,
+         id_departamento,
          direccion,
          cuit,
          fecha_habilitacion,
@@ -178,6 +190,7 @@ const modificarPlanta = async (req, res) => {
       [
         nuevoNombre,
         nuevaProvin,
+        nuevoDepto || null,
         nuevaDireccion,
         nuevoCUIT,
         nuevaFecha,
@@ -212,7 +225,7 @@ const modificarPlanta = async (req, res) => {
     if (error.message.includes('cuit') || error.message.includes('undefined column')) {
       try {
         const current = await pool.query(
-          `SELECT nombre, id_provincia, direccion, fecha_habilitacion, norma_legal, estado
+          `SELECT nombre, id_provincia, id_departamento, direccion, fecha_habilitacion, norma_legal, estado
            FROM planta WHERE id_planta = $1`,
           [id]
         );
@@ -224,6 +237,7 @@ const modificarPlanta = async (req, res) => {
         const currentData = current.rows[0];
         const nuevoNombre = nombre !== undefined ? nombre?.trim() || '' : currentData.nombre;
         const nuevaProvin = id_provincia !== undefined ? id_provincia : currentData.id_provincia;
+        const nuevoDepto = id_departamento !== undefined ? id_departamento : currentData.id_departamento;
         const nuevaDireccion = direccion !== undefined ? direccion?.trim() || '' : currentData.direccion;
         const nuevaFecha = fecha_habilitacion !== undefined ? fecha_habilitacion : currentData.fecha_habilitacion;
         const nuevaNorma = norma_legal !== undefined ? norma_legal?.trim() || '' : currentData.norma_legal;
@@ -233,15 +247,17 @@ const modificarPlanta = async (req, res) => {
           `UPDATE planta
            SET nombre = $1,
                id_provincia = $2,
-               direccion = $3,
-               fecha_habilitacion = $4,
-               norma_legal = $5,
-               estado = $6
-           WHERE id_planta = $7
+               id_departamento = $3,
+               direccion = $4,
+               fecha_habilitacion = $5,
+               norma_legal = $6,
+               estado = $7
+           WHERE id_planta = $8
            RETURNING 
              id_planta AS id,
              nombre,
              id_provincia,
+             id_departamento,
              direccion,
              fecha_habilitacion,
              norma_legal,
@@ -249,6 +265,7 @@ const modificarPlanta = async (req, res) => {
           [
             nuevoNombre,
             nuevaProvin,
+            nuevoDepto || null,
             nuevaDireccion,
             nuevaFecha,
             nuevaNorma,
@@ -298,6 +315,7 @@ const eliminarPlanta = async (req, res) => {
          id_planta AS id,
          nombre,
          id_provincia,
+         id_departamento,
          direccion,
          cuit,
          fecha_habilitacion,

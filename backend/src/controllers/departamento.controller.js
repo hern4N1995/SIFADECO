@@ -6,6 +6,7 @@ const obtenerDepartamentos = async (req, res) => {
     const resultado = await pool.query(`
       SELECT 
         d.id_departamento, 
+        d.id_provincia,
         d.nombre_departamento AS departamento, 
         p.descripcion AS provincia
       FROM departamento d

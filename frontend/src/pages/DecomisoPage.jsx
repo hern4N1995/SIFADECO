@@ -426,6 +426,7 @@ function ReviewModal({
   payload = [],
   onConfirm,
   serverErrors = [],
+  isSaving = false,
 }) {
   if (!open) return null;
 
@@ -568,15 +569,17 @@ function ReviewModal({
         <div className="flex items-center justify-end gap-3 mt-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-md border hover:bg-slate-50"
+            disabled={isSaving}
+            className="px-4 py-2 rounded-md border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Volver a editar
           </button>
           <button
             onClick={() => onConfirm(payload)}
-            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800"
+            disabled={isSaving}
+            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Confirmar y guardar
+            {isSaving ? '⏳ Guardando...' : 'Confirmar y guardar'}
           </button>
         </div>
       </div>
@@ -622,6 +625,7 @@ export default function DecomisoPage() {
   const [reviewPreviewData, setReviewPreviewData] = useState([]);
   const [reviewPayload, setReviewPayload] = useState([]);
   const [reviewServerErrors, setReviewServerErrors] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [fechaDecomiso, setFechaDecomiso] = useState('');
   const [fechaFaenaRaw, setFechaFaenaRaw] = useState('');
@@ -1003,6 +1007,7 @@ export default function DecomisoPage() {
 
   const confirmAndSave = async (payload) => {
     setReviewServerErrors([]);
+    setIsSaving(true);
     try {
       console.log('[DecomisoPage] Enviando decomiso:', payload);
       const res = await api.post('/decomisos', payload);
@@ -1010,12 +1015,14 @@ export default function DecomisoPage() {
       console.log('[DecomisoPage] Decomiso guardado:', data);
       setReviewOpen(false);
       setSuccess('Decomiso registrado correctamente.');
+      setIsSaving(false);
       if (data?.id_decomiso) navigate(`/decomisos/detalle/${data.id_decomiso}`);
     } catch (e) {
       console.error('[DecomisoPage] Error guardando decomiso:', e?.response?.data || e.message);
       const serverMsg =
         e?.response?.data?.error || e?.response?.data?.mensaje || 'Error desconocido del servidor';
       setReviewServerErrors([`Error del servidor: ${serverMsg}`]);
+      setIsSaving(false);
     }
   };
 
@@ -1280,6 +1287,7 @@ export default function DecomisoPage() {
           payload={reviewPayload}
           onConfirm={confirmAndSave}
           serverErrors={reviewServerErrors}
+          isSaving={isSaving}
         />
 
         {modalForAfeccion && (

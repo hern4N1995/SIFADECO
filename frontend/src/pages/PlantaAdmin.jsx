@@ -14,6 +14,7 @@ function SelectField({
   options,
   placeholder,
   maxMenuHeight = 200,
+  isDisabled = false,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -24,20 +25,22 @@ function SelectField({
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
-      boxShadow: isFocusing
+      boxShadow: isFocusing && !isDisabled
         ? '0 0 0 1px #000'
-        : state.isFocused
+        : state.isFocused && !isDisabled
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
       '&:hover': {
-        borderColor: '#96f1b7',
+        borderColor: isDisabled ? '#e5e7eb' : '#96f1b7',
       },
       '&:focus-within': {
-        borderColor: '#22c55e',
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
       },
     }),
     valueContainer: (base) => ({
@@ -97,10 +100,13 @@ function SelectField({
         maxMenuHeight={maxMenuHeight}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
+        isDisabled={isDisabled}
         components={{ IndicatorSeparator: () => null }}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
       />
     </div>
@@ -113,9 +119,11 @@ function SelectField({
 export default function PlantaAdmin() {
   const [plantas, setPlantas] = useState([]);
   const [provincias, setProvincias] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
   const [nuevaPlanta, setNuevaPlanta] = useState({
     nombre: '',
     provincia: null,
+    departamento: null,
     direccion: '',
     cuit: '',
     fecha_habilitacion: '',
@@ -219,6 +227,38 @@ export default function PlantaAdmin() {
     };
   }, []);
 
+  /* ---------------------------
+     Cargar departamentos
+     --------------------------- */
+  useEffect(() => {
+    let mounted = true;
+
+    async function cargarDepartamentos() {
+      try {
+        const { data } = await api.get('/departamentos');
+        if (!mounted) return;
+        console.log('Departamentos cargados:', data);
+        const normalizados = Array.isArray(data) 
+          ? data.map((d) => ({ 
+              ...d, 
+              id: d.id ?? d.id_departamento,
+              nombre: d.departamento ?? d.nombre ?? d.nombre_departamento,
+              id_provincia: d.id_provincia
+            }))
+          : [];
+        setDepartamentos(normalizados);
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Error al cargar departamentos:', err);
+      }
+    }
+
+    cargarDepartamentos();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Helper: display date as dd/mm/yyyy (strip time if present)
   const formatDateForDisplay = (val) => {
     if (!val && val !== 0) return '—';
@@ -263,8 +303,17 @@ export default function PlantaAdmin() {
   };
 
   const handleProvinciaChange = (selected) => {
-    setNuevaPlanta((prev) => ({ ...prev, provincia: selected }));
+    setNuevaPlanta((prev) => ({ ...prev, provincia: selected, departamento: null }));
   };
+
+  const handleDepartamentoChange = (selected) => {
+    setNuevaPlanta((prev) => ({ ...prev, departamento: selected }));
+  };
+
+  // Filtrar departamentos según la provincia seleccionada
+  const departamentosFiltrados = nuevaPlanta.provincia
+    ? departamentos.filter((d) => d.id_provincia === (nuevaPlanta.provincia.value ?? nuevaPlanta.provincia.id_provincia))
+    : [];
 
   /* ---------------------------
      Agregar planta (usa api.post)
@@ -306,6 +355,7 @@ export default function PlantaAdmin() {
       const payload = {
         nombre: nuevaPlanta.nombre,
         id_provincia: nuevaPlanta.provincia?.value ?? null,
+        id_departamento: nuevaPlanta.departamento?.value ?? null,
         direccion: nuevaPlanta.direccion,
         cuit: nuevaPlanta.cuit.replace(/\D/g, ''),
         fecha_habilitacion: nuevaPlanta.fecha_habilitacion,
@@ -324,6 +374,7 @@ export default function PlantaAdmin() {
       setNuevaPlanta({
         nombre: '',
         provincia: null,
+        departamento: null,
         direccion: '',
         cuit: '',
         fecha_habilitacion: '',
@@ -377,12 +428,20 @@ export default function PlantaAdmin() {
       return `${yyyy}-${mm}-${dd}`;
     };
 
+    // Normalizar estructura de departamento para el editor
+    const departamentoValue = planta.departamento?.id ?? planta.id_departamento ?? null;
+    const departamentoLabel = planta.departamento?.nombre ?? planta.nombre_departamento ?? null;
+
     setEditado({
       ...planta,
       id: idVal,
       provincia:
         provinciaValue !== null
           ? { value: provinciaValue, label: provinciaLabel }
+          : null,
+      departamento:
+        departamentoValue !== null
+          ? { value: departamentoValue, label: departamentoLabel }
           : null,
       fecha_habilitacion: formatDateForInput(planta.fecha_habilitacion),
     });
@@ -428,6 +487,7 @@ export default function PlantaAdmin() {
     const payload = {
       nombre: editado.nombre,
       id_provincia: editado?.provincia?.value ?? editado?.id_provincia ?? null,
+      id_departamento: editado?.departamento?.value ?? editado?.id_departamento ?? null,
       direccion: editado.direccion,
       cuit: editado.cuit?.replace(/\D/g, '') || null,
       fecha_habilitacion: editado?.fecha_habilitacion || null,
@@ -637,6 +697,25 @@ export default function PlantaAdmin() {
               placeholder="Seleccionar provincia"
             />
 
+            <SelectField
+              label="Departamento"
+              value={
+                nuevaPlanta.departamento
+                  ? {
+                      value: nuevaPlanta.departamento.value,
+                      label: nuevaPlanta.departamento.label,
+                    }
+                  : null
+              }
+              onChange={handleDepartamentoChange}
+              options={departamentosFiltrados.map((d) => ({
+                value: d.id ?? d.id_departamento,
+                label: d.nombre ?? d.nombre_departamento ?? `Depto ${d.id}`,
+              }))}
+              placeholder={nuevaPlanta.provincia ? "Seleccionar departamento" : "Seleccione provincia primero"}
+              isDisabled={!nuevaPlanta.provincia}
+            />
+
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">
                 Dirección
@@ -723,12 +802,27 @@ export default function PlantaAdmin() {
                     <SelectField
                       label="Provincia"
                       value={editado.provincia ?? null}
-                      onChange={(sel) => setEditado((p) => ({ ...p, provincia: sel }))}
+                      onChange={(sel) => setEditado((p) => ({ ...p, provincia: sel, departamento: null }))}
                       options={provincias.map((p) => ({ 
                         value: p.id ?? p.id_provincia, 
                         label: p.descripcion ?? p.nombre ?? `Provincia ${p.id}`
                       }))}
                       placeholder="Seleccione..."
+                    />
+                  </div>
+                  <div>
+                    <SelectField
+                      label="Departamento"
+                      value={editado.departamento ?? null}
+                      onChange={(sel) => setEditado((p) => ({ ...p, departamento: sel }))}
+                      options={departamentos
+                        .filter((d) => d.id_provincia === (editado.provincia?.value ?? editado?.id_provincia))
+                        .map((d) => ({ 
+                          value: d.id ?? d.id_departamento, 
+                          label: d.nombre ?? d.nombre_departamento ?? `Depto ${d.id}`
+                        }))}
+                      placeholder={editado.provincia ? "Seleccione..." : "Seleccione provincia primero"}
+                      isDisabled={!editado.provincia}
                     />
                   </div>
                   <div>
@@ -872,6 +966,7 @@ export default function PlantaAdmin() {
                     <div className="flex-1 space-y-1 text-sm text-gray-700">
                       <p className="font-semibold text-gray-800">{p.nombre}</p>
                       <p>{p.nombre_provincia || '—'}</p>
+                      <p>Depto: {p.nombre_departamento || '—'}</p>
                       <p>{p.direccion || '—'}</p>
                       <p>CUIT: {formatCUIT(p.cuit?.toString() || '')}</p>
                       <p>Fecha: {formatDateForDisplay(p.fecha_habilitacion)}</p>
@@ -920,6 +1015,9 @@ export default function PlantaAdmin() {
                       Provincia
                     </th>
                     <th className="px-4 py-3 text-left font-semibold align-middle">
+                      Departamento
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold align-middle">
                       Dirección
                     </th>
                     <th className="px-4 py-3 text-left font-semibold align-middle">CUIT</th>
@@ -940,6 +1038,7 @@ export default function PlantaAdmin() {
                     <tr key={p.id} className="hover:bg-gray-50 transition h-16 align-middle">
                       <td className="px-4 py-3 align-middle">{p.nombre}</td>
                       <td className="px-4 py-3 align-middle">{p.nombre_provincia || '—'}</td>
+                      <td className="px-4 py-3 align-middle">{p.nombre_departamento || '—'}</td>
                       <td className="px-4 py-3 align-middle">{p.direccion || '—'}</td>
                       <td className="px-4 py-3 align-middle">{formatCUIT(p.cuit?.toString() || '')}</td>
                       <td className="px-4 py-3 align-middle">{formatDateForDisplay(p.fecha_habilitacion)}</td>

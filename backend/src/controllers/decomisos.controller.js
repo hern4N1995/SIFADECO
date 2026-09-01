@@ -106,9 +106,57 @@ const obtenerResumenDecomiso = async (req, res) => {
 
 const listarDecomisos = async (req, res) => {
   try {
-    // Limitar a 100 decomisos para evitar timeouts (paginación en frontend)
-    const limit = 100;
-    const result = await pool.query(`
+    const {
+      id_planta = '',
+      desde = '',
+      hasta = '',
+      id_afeccion = '',
+      destino_decomiso = '',
+    } = req.query;
+
+    const limit = Number(req.query.limit || 500) || 500;
+
+    const conditions = [];
+    const params = [];
+
+    // Filtro por planta del usuario si no es admin y no viene explícito
+    const rolUsuario = Number(req.user?.rol ?? 0);
+    const idPlantaUsuario = req.user?.id_planta;
+
+    if (idPlantaUsuario && rolUsuario !== 1 && !String(id_planta).trim()) {
+      conditions.push(`t.id_planta = $${params.length + 1}`);
+      params.push(Number(idPlantaUsuario));
+    }
+
+    if (String(id_planta).trim()) {
+      conditions.push(`t.id_planta = $${params.length + 1}`);
+      params.push(Number(id_planta));
+    }
+
+    if (String(desde).trim()) {
+      conditions.push(`d.fecha_decomiso::date >= $${params.length + 1}`);
+      params.push(desde);
+    }
+
+    if (String(hasta).trim()) {
+      conditions.push(`d.fecha_decomiso::date <= $${params.length + 1}`);
+      params.push(hasta);
+    }
+
+    if (String(id_afeccion).trim()) {
+      conditions.push(`dd.id_afeccion = $${params.length + 1}`);
+      params.push(Number(id_afeccion));
+    }
+
+    if (String(destino_decomiso).trim()) {
+      conditions.push(`dd.destino_decomiso = $${params.length + 1}`);
+      params.push(destino_decomiso);
+    }
+
+    params.push(limit);
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
       SELECT 
         d.id_decomiso,
         d.fecha_decomiso,
@@ -131,7 +179,8 @@ const listarDecomisos = async (req, res) => {
         dd.observaciones,
         tp.nombre_tipo_parte,
         pd.nombre_parte,
-        a.descripcion AS afeccion
+        a.descripcion AS afeccion,
+        e.descripcion AS especie
       FROM decomiso d
       JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
       JOIN faena f ON fd.id_faena = f.id_faena
@@ -142,16 +191,13 @@ const listarDecomisos = async (req, res) => {
       LEFT JOIN parte_decomisada pd ON dd.id_parte_decomisada = pd.id_parte_decomisada
       LEFT JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco
       LEFT JOIN afeccion a ON dd.id_afeccion = a.id_afeccion
+      LEFT JOIN especie e ON a.id_especie = e.id_especie
+      ${whereClause}
       ORDER BY d.fecha_decomiso DESC, d.id_decomiso DESC
-      LIMIT $1;
-    `, [limit]);
+      LIMIT $${params.length};
+    `;
 
-    if (result.rows.length > 0) {
-      console.log('[listarDecomisos] First row keys:', Object.keys(result.rows[0]));
-      console.log('[listarDecomisos] First row fecha_ingreso:', result.rows[0].fecha_ingreso);
-      console.log('[listarDecomisos] First row fecha_decomiso:', result.rows[0].fecha_decomiso);
-    }
-
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error al listar decomisos:', err.message);
