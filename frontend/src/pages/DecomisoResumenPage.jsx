@@ -90,13 +90,6 @@ const DecomisoResumenPage = () => {
   // Buscar una fila que contenga fecha_decomiso explícita (por si el primer row no la tiene)
   const fechaDecomisoRaw = resumen.find((r) => r && (r.fecha_decomiso || r.fecha_decomiso === 0))?.fecha_decomiso;
 
-  const formatFecha = (fecha) =>
-    new Date(fecha).toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-
   const totalIngresados = tropaDecomisos.length > 0
     ? (() => {
         const vals = tropaDecomisos.map((f) => Number(f.cantidad_tropa) || 0).filter((v) => v > 0);
@@ -122,7 +115,7 @@ const DecomisoResumenPage = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card title="N° de Tropa" value={faena.n_tropa || '—'} />
           <Card title="DTE / DTU" value={faena.dte_dtu || '—'} />
-          <Card title="Fecha de Decomiso" value={formatFecha(fechaDecomisoRaw || faena.fecha_decomiso || faena.fecha_faena || faena.fecha)} />
+          <Card title="Fecha de Decomiso" value={formatDateFromDB(fechaDecomisoRaw || faena.fecha_decomiso || faena.fecha_faena || faena.fecha)} />
           <Card title="Faenados" value={faena.cantidad_faena || '—'} />
         </div>
 

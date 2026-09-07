@@ -337,6 +337,27 @@ export default function PlantaAdmin() {
       return;
     }
 
+    // Validar nombre duplicado
+    const nombreNorm = nuevaPlanta.nombre.trim().toLowerCase();
+    const existeNombreDuplicado = plantas.some((p) => {
+      const pNombreNorm = (p.nombre || '').trim().toLowerCase();
+      return pNombreNorm === nombreNorm;
+    });
+    if (existeNombreDuplicado) {
+      mostrarFeedback('❌ Ya existe una planta con este nombre.', 'error');
+      return;
+    }
+
+    // Validar CUIT duplicado
+    const existeCuitDuplicado = plantas.some((p) => {
+      const pCuitDigitos = String(p.cuit || '').replace(/\D/g, '');
+      return pCuitDigitos === cuitDigitos;
+    });
+    if (existeCuitDuplicado) {
+      mostrarFeedback('❌ Ya existe una planta con este CUIT.', 'error');
+      return;
+    }
+
     if (!nuevaPlanta.fecha_habilitacion?.trim()) {
       mostrarFeedback('❌ La fecha de habilitación es obligatoria.', 'error');
       return;

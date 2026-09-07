@@ -250,6 +250,24 @@ export default function TipoParteDecomisadaAdmin() {
       return;
     }
 
+    // Validar duplicado (normalizar comparación)
+    const nombreNorm = String(form.nombre_tipo_parte).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const existeDuplicado = tipos.some((t) => {
+      const tNombreNorm = (t.nombre_tipo_parte || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return tNombreNorm === nombreNorm && t.id_tipo_parte !== editandoId;
+    });
+
+    if (existeDuplicado) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: '❌ Este tipo de parte ya existe',
+        onConfirm: () => setModal({ ...modal, isOpen: false }),
+      });
+      return;
+    }
+
     const payload = {
       nombre_tipo_parte: String(form.nombre_tipo_parte).trim(),
       estado: form.estado === 'Activo',

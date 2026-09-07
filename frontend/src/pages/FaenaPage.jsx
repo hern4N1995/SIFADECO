@@ -19,10 +19,12 @@ const useMediaQuery = (query) => {
 function SelectField({
   label,
   value,
-  options = [],
   onChange,
+  options = [],
   placeholder = '',
+  isDisabled = false,
   className = '',
+  maxMenuHeight = 200,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -31,23 +33,29 @@ function SelectField({
       ...base,
       height: '48px',
       minHeight: '48px',
-      paddingLeft: '12px',
-      paddingRight: '12px',
-      backgroundColor: '#f9fafb',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
-      boxShadow: isFocusing
+      boxShadow: isFocusing && !isDisabled
         ? '0 0 0 1px #000'
-        : state.isFocused
-        ? '0 0 0 4px #d1fae5'
-        : 'none',
-      transition: 'all 50ms ease',
-      '&:hover': { borderColor: '#96f1b7' },
-      '&:focus-within': { borderColor: '#22c55e' },
+        : state.isFocused && !isDisabled
+          ? '0 0 0 4px #d1fae5'
+          : 'none',
+      transition: 'all 100ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
+      '&:hover': {
+        borderColor: isDisabled ? '#e5e7eb' : '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
+      },
     }),
     valueContainer: (base) => ({
       ...base,
-      padding: '0 6px',
+      padding: '0 0 0 2px',
       height: '48px',
       display: 'flex',
       alignItems: 'center',
@@ -65,9 +73,19 @@ function SelectField({
       fontSize: '14px',
       color: '#111827',
       margin: 0,
+      top: 'initial',
+      transform: 'none',
     }),
-    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
-    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -83,24 +101,32 @@ function SelectField({
   };
 
   return (
-    <div className={`flex flex-col ${className}`} style={{ minWidth: 0 }}>
+    <div className={label ? 'flex flex-col' : ''}>
       {label && (
         <label className="mb-2 font-semibold text-gray-700 text-sm">
           {label}
         </label>
       )}
       <Select
-        value={value}
-        onChange={(sel) => onChange(sel)}
+        value={value ?? null}
+        onChange={(sel) => onChange(sel ?? null)}
         options={options}
         placeholder={placeholder}
+        maxMenuHeight={maxMenuHeight}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
+        menuPortalTarget={
+          typeof document !== 'undefined' ? document.body : undefined
+        }
+        menuPosition="fixed"
       />
     </div>
   );
@@ -123,7 +149,12 @@ const FaenaPage = () => {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
-  const rowsPerPageOptions = [4, 7, 10, 20];
+  const rowsPerPageOptions = [
+    { value: 4, label: '4' },
+    { value: 7, label: '7' },
+    { value: 10, label: '10' },
+    { value: 20, label: '20' },
+  ];
   const [rowsPerPage, setRowsPerPage] = useState(20);
 
   useEffect(() => {
@@ -470,11 +501,12 @@ const FaenaPage = () => {
 
   const TropaCard = ({ t }) => (
     <div
-      className={`rounded-xl shadow border p-4 mb-4 ${
+      className={`rounded-xl shadow border mb-3 ${
         esTropaVencida(t)
           ? 'bg-red-300 border-red-500'
           : 'bg-white border-slate-200'
       }`}
+      style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', padding: '16px' }}
     >
       <div className="flex justify-between items-start mb-2">
         <span className="text-xs text-slate-500">{formatDate(t.fecha)}</span>
@@ -528,107 +560,151 @@ const FaenaPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-6 sm:px-4 sm:py-8 lg:px-6 overflow-x-hidden box-border">
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-12">
           📋 Tropas a Faenar
         </h1>
 
-        <div className="max-w-7xl mx-auto px-1 mb-3 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div className="w-full md:max-w-lg">
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Buscar por tropa, productor, departamento o especie
-            </label>
-            <input
-              type="text"
-              value={filtroBusqueda}
-              onChange={(e) => setFiltroBusqueda(e.target.value)}
-              placeholder="Ej: 852, Carlos Rodríguez, Barranqueras, Bovinos"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-white transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-            />
-          </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 mb-12">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between flex-wrap">
+            {/* Filtros lado izquierdo */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end flex-wrap w-full sm:w-auto">
+              {/* Fechas */}
+              <div className="flex gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                {/* Desde */}
+                <div className="w-full sm:w-40">
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+                    Desde
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      lang="es-ES"
+                      value={filterDesde}
+                      onChange={(e) => setFilterDesde(e.target.value)}
+                      className="flex-1 sm:flex-none border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                    />
+                    {filterDesde && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterDesde('')}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                        title="Limpiar fecha desde"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-          <div className="flex flex-col gap-2">
-            <SelectField
-              label="Filas"
-              value={{ value: rowsPerPage, label: String(rowsPerPage) }}
-              options={rowsPerPageOptions.map((value) => ({
-                value,
-                label: String(value),
-              }))}
-              onChange={(sel) => setRowsPerPage(Number(sel?.value ?? rowsPerPage))}
-              className={isMobile ? '' : 'w-28'}
-              placeholder="Filas"
-            />
-          </div>
+                {/* Hasta */}
+                <div className="w-full sm:w-40">
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+                    Hasta
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      lang="es-ES"
+                      value={filterHasta}
+                      onChange={(e) => setFilterHasta(e.target.value)}
+                      className="flex-1 sm:flex-none border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                    />
+                    {filterHasta && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterHasta('')}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                        title="Limpiar fecha hasta"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex gap-3 items-end">
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-600 mb-1">Desde</label>
-              <input
-                type="date"
-                value={filterDesde}
-                onChange={(e) => setFilterDesde(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-600 mb-1">Hasta</label>
-              <input
-                type="date"
-                value={filterHasta}
-                onChange={(e) => setFilterHasta(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none"
-              />
-            </div>
-            <div className="flex flex-col justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterDesde('');
-                  setFilterHasta('');
-                  setFiltroBusqueda('');
-                }}
-                className="ml-2 px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition"
-              >
-                Limpiar filtros
-              </button>
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-600 mb-1">Ordenar</label>
-              <div className="flex gap-2">
-                <select
-                  value={sortField}
-                  onChange={(e) => setSortField(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
-                >
-                  <option value="fecha">Fecha</option>
-                  <option value="n_tropa">N° Tropa</option>
-                </select>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
-                >
-                  <option value="desc">Descendente</option>
-                  <option value="asc">Ascendente</option>
-                </select>
+              {/* Búsqueda y Ordenamiento */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-start sm:items-end">
+                {/* Búsqueda */}
+                <div className="w-full sm:w-64">
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+                    Buscar por tropa / DTE / productor
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="search"
+                      placeholder="Ej: 123 / Pérez"
+                      value={filtroBusqueda}
+                      onChange={(e) => setFiltroBusqueda(e.target.value)}
+                      className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                    />
+                    {filtroBusqueda && (
+                      <button
+                        type="button"
+                        onClick={() => setFiltroBusqueda('')}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                        title="Limpiar búsqueda"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ordenar */}
+                <div className="flex gap-2 items-end w-full sm:w-auto">
+                  <div className="flex-1 sm:flex-none sm:w-28">
+                    <SelectField
+                      value={sortField ? { value: sortField, label: sortField === 'fecha' ? 'Fecha' : 'N° Tropa' } : null}
+                      onChange={(sel) => setSortField(sel?.value || 'fecha')}
+                      options={[
+                        { value: 'fecha', label: 'Fecha' },
+                        { value: 'n_tropa', label: 'N° Tropa' },
+                      ]}
+                      placeholder="Ordenar por"
+                      maxMenuHeight={120}
+                    />
+                  </div>
+                  <div className="flex-1 sm:flex-none sm:w-28">
+                    <SelectField
+                      value={sortOrder ? { value: sortOrder, label: sortOrder === 'desc' ? 'Desc' : 'Asc' } : null}
+                      onChange={(sel) => setSortOrder(sel?.value || 'desc')}
+                      options={[
+                        { value: 'desc', label: 'Desc' },
+                        { value: 'asc', label: 'Asc' },
+                      ]}
+                      placeholder="Orden"
+                      maxMenuHeight={120}
+                    />
+                  </div>
+                  <div className="flex-1 sm:flex-none sm:w-32 sm:w-40">
+                    <label className="sr-only">Cant. filas</label>
+                    <SelectField
+                      value={rowsPerPageOptions.find((o) => o.value === rowsPerPage) || null}
+                      options={rowsPerPageOptions}
+                      onChange={(sel) => {
+                        setRowsPerPage(Number(sel?.value ?? rowsPerPage));
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Cant. filas"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          
-        </div>
-
-        <div className="max-w-7xl mx-auto px-1 mb-3 flex justify-end">
-          <div className="text-right">
-            <p className="text-sm font-semibold text-green-700">
-              Total general a faenar:{' '}
-              <span className="text-green-900">{totalFaenar}</span>
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Registros visibles: {tropasOrdenadas.length}
-            </p>
+            {/* Resumen lado derecho */}
+            <div className="text-right">
+              <p className="text-sm font-semibold text-green-700">
+                Total general a faenar:{' '}
+                <span className="text-green-900">{totalFaenar}</span>
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Registros visibles: {tropasOrdenadas.length}
+              </p>
+            </div>
           </div>
         </div>
       </header>
@@ -642,7 +718,7 @@ const FaenaPage = () => {
           <p className="text-lg">No hay tropas disponibles para faenar.</p>
         </div>
       ) : isMobile ? (
-        <div className="max-w-2xl mx-auto">
+        <div className="w-full px-3 sm:px-4" style={{ boxSizing: 'border-box' }}>
           {paginatedTropas.map((t) => (
             <TropaCard
               key={t.id_tropa ?? `${t.n_tropa}-${Math.random()}`}
@@ -651,8 +727,8 @@ const FaenaPage = () => {
           ))}
         </div>
       ) : (
-        <div className="flex justify-center px-2 md:px-4">
-          <div className="w-full max-w-7xl overflow-x-auto overflow-y-auto max-h-[560px] rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
+        <div className="flex justify-center px-2 sm:px-4 w-full box-border">
+          <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
             <table className="w-full table-auto text-sm text-center text-slate-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                 <tr>

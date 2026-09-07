@@ -202,6 +202,14 @@ function InlineCreateModalAfeccion({
     };
   }, []);
 
+  const normalizarTexto = (texto) => {
+    return (texto ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
   const validate = () => {
     return values.id_especie && values.descripcion?.trim();
   };
@@ -219,23 +227,33 @@ function InlineCreateModalAfeccion({
       return;
     }
 
-    // Verificar que no esté duplicada
-    const descripcionNormalizada = values.descripcion.trim().toLowerCase();
-    const especieStr = String(values.id_especie);
-    const exists = afecciones.some(
-      (a) =>
-        String(a.id_especie ?? a.especie_id) === especieStr &&
-        (a.descripcion ?? a.nombre ?? '').trim().toLowerCase() === descripcionNormalizada
-    );
-
-    if (exists) {
-      setError('Esta afección ya está cargada.');
-      if (onNotify) onNotify('error', 'Esta afección ya está cargada.');
-      return;
-    }
-
+    // Obtener afecciones frescas del backend para validar contra datos actuales
     setLoading(true);
     try {
+      const resAfecciones = await api.get('/afecciones', { timeout: 10000 });
+      const afeccionesActuales = Array.isArray(resAfecciones?.data) ? resAfecciones.data : [];
+
+      // Validar que no esté duplicada usando normalización de texto
+      const descripcionNorm = normalizarTexto(values.descripcion);
+      const especieSeleccionada = especies.find(
+        (e) => (e.id_especie ?? e.id) === Number(values.id_especie)
+      );
+      const nombreEspecieSeleccionada = especieSeleccionada?.descripcion ?? especieSeleccionada?.nombre ?? '';
+      const especieNorm = normalizarTexto(nombreEspecieSeleccionada);
+
+      const existe = afeccionesActuales.some((a) => {
+        const aDescNorm = normalizarTexto(a.descripcion);
+        const aEspecieNorm = normalizarTexto(a.especie || '');
+        return aDescNorm === descripcionNorm && aEspecieNorm === especieNorm;
+      });
+
+      if (existe) {
+        setError('Esta afección ya está cargada para esta especie.');
+        if (onNotify) onNotify('error', 'Esta afección ya está cargada para esta especie.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         id_especie: Number(values.id_especie),
         descripcion: values.descripcion.trim(),

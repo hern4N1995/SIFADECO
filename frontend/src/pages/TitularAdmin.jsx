@@ -224,6 +224,20 @@ export default function TitularAdmin() {
       return;
     }
 
+    // Validar CUIT duplicado
+    if (nuevoTitular.cuit) {
+      const cuitNormalizado = normalizarCuit(nuevoTitular.cuit);
+      const existeDuplicado = titulares.some((t) => {
+        const cuitExistente = normalizarCuit(String(t.cuit || t.documento || ''));
+        return cuitExistente === cuitNormalizado;
+      });
+
+      if (existeDuplicado) {
+        mostrarFeedback('❌ Este CUIT ya está registrado.', 'error');
+        return;
+      }
+    }
+
     try {
       const payload = {
         nombre: nuevoTitular.nombre,

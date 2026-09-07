@@ -245,6 +245,24 @@ export default function EspecieAdmin() {
       return;
     }
 
+    // Validar duplicado (normalizar comparación)
+    const descNorm = form.descripcion.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const existeDuplicado = especies.some((e) => {
+      const eDescNorm = (e.descripcion || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return eDescNorm === descNorm && e.id_especie !== editandoId;
+    });
+
+    if (existeDuplicado) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: '❌ Esta especie ya existe',
+        onConfirm: () => setModal({ ...modal, isOpen: false }),
+      });
+      return;
+    }
+
     const payload = { descripcion: form.descripcion.trim() };
 
     setModal({

@@ -109,9 +109,12 @@ export default function Sidebar() {
       }
     };
     if (open) {
+      document.body.style.overflow = 'hidden';
       document.addEventListener('mousedown', handleClickOutside);
-      return () =>
+      return () => {
+        document.body.style.overflow = 'auto';
         document.removeEventListener('mousedown', handleClickOutside);
+      };
     }
   }, [open]);
 
@@ -122,7 +125,8 @@ export default function Sidebar() {
           {!open && (
             <button
               onClick={() => setOpen(true)}
-              className="lg:hidden fixed top-24 left-4 z-50 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl"
+              className="lg:hidden fixed top-24 left-4 z-40 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl hover:bg-primary transition"
+              aria-label="Abrir menú"
             >
               <HiMenu size={22} />
             </button>
@@ -130,14 +134,25 @@ export default function Sidebar() {
 
           <AnimatePresence>
             {open && (
-              <motion.div
-                ref={sidebarRef}
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'tween', duration: 0.3 }}
-                className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
-              >
+              <>
+                {/* Backdrop overlay para móvil */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: 'tween', duration: 0.2 }}
+                  className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                  onClick={() => setOpen(false)}
+                />
+                {/* Sidebar */}
+                <motion.div
+                  ref={sidebarRef}
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'tween', duration: 0.3 }}
+                  className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
+                >
                 <button
                   onClick={() => setOpen(false)}
                   className="absolute top-6 right-4 text-white/80 hover:text-white transition"
@@ -145,7 +160,7 @@ export default function Sidebar() {
                   <HiX size={24} />
                 </button>
 
-                <div className="p-6 pt-20 flex-1 flex flex-col">
+                <div className="p-4 sm:p-6 pt-16 sm:pt-20 flex-1 flex flex-col overflow-y-auto">
                   <h2 className="text-xl font-bold text-white/90 mb-6 tracking-tight">
                     {match.title}
                   </h2>
@@ -164,6 +179,7 @@ export default function Sidebar() {
                   </nav>
                 </div>
               </motion.div>
+              </>
             )}
           </AnimatePresence>
 

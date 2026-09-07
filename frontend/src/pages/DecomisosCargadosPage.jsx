@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import api from '../services/api';
 
 const useMediaQuery = (query) => {
@@ -12,6 +13,122 @@ const useMediaQuery = (query) => {
   }, [query]);
   return matches;
 };
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '',
+  isDisabled = false,
+  className = '',
+  maxMenuHeight = 200,
+}) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing && !isDisabled
+        ? '0 0 0 1px #000'
+        : state.isFocused && !isDisabled
+          ? '0 0 0 4px #d1fae5'
+          : 'none',
+      transition: 'all 100ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
+      '&:hover': {
+        borderColor: isDisabled ? '#e5e7eb' : '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+      top: 'initial',
+      transform: 'none',
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className={label ? 'flex flex-col' : ''}>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
+      <Select
+        value={value ?? null}
+        onChange={(sel) => onChange(sel ?? null)}
+        options={options}
+        placeholder={placeholder}
+        maxMenuHeight={maxMenuHeight}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
+        onFocus={() => {
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
+        }}
+        menuPortalTarget={
+          typeof document !== 'undefined' ? document.body : undefined
+        }
+        menuPosition="fixed"
+      />
+    </div>
+  );
+}
 
 const DecomisosCargadosPage = () => {
   const [decomisos, setDecomisos] = useState([]);
@@ -32,7 +149,7 @@ const DecomisosCargadosPage = () => {
   const [editSaving, setEditSaving] = useState(false);
 
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery('(max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : 6;
 
   // Obtener rol y planta del usuario desde localStorage
@@ -680,7 +797,7 @@ const DecomisosCargadosPage = () => {
   /* ---------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center drop-shadow mb-10">
           📦 Decomisos Cargados
@@ -690,7 +807,7 @@ const DecomisosCargadosPage = () => {
       {/* debug panel removed */}
 
       <div className="mb-6 max-w-5xl mx-auto">
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] items-end">
           <div className="grid gap-3 sm:grid-cols-2 items-end">
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Desde</span>
@@ -717,8 +834,8 @@ const DecomisosCargadosPage = () => {
             </label>
           </div>
 
-          <div className="flex items-end gap-3">
-            <label className="flex flex-col text-sm text-slate-600 w-[212px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:flex xl:items-end gap-3 min-w-0">
+            <label className="flex flex-col text-sm text-slate-600 w-full sm:col-span-2 xl:w-[212px] xl:col-span-1">
               <span className="mb-1 font-semibold">Buscar (tropa / planta / DTE)</span>
               <input
                 type="text"
@@ -731,31 +848,35 @@ const DecomisosCargadosPage = () => {
 
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Ordenar por</span>
-              <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-green-500 outline-none"
-              >
-                <option value="fecha">Fecha decomiso</option>
-                <option value="n_tropa">N° Tropa</option>
-              </select>
+              <SelectField
+                value={sortField ? { value: sortField, label: sortField === 'fecha' ? 'Fecha decomiso' : 'N° Tropa' } : null}
+                onChange={(sel) => setSortField(sel?.value || 'fecha')}
+                options={[
+                  { value: 'fecha', label: 'Fecha decomiso' },
+                  { value: 'n_tropa', label: 'N° Tropa' },
+                ]}
+                placeholder="Ordenar por"
+                maxMenuHeight={120}
+              />
             </label>
 
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Dirección</span>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-green-500 outline-none"
-              >
-                <option value="desc">Descendente</option>
-                <option value="asc">Ascendente</option>
-              </select>
+              <SelectField
+                value={sortOrder ? { value: sortOrder, label: sortOrder === 'desc' ? 'Descendente' : 'Ascendente' } : null}
+                onChange={(sel) => setSortOrder(sel?.value || 'desc')}
+                options={[
+                  { value: 'desc', label: 'Descendente' },
+                  { value: 'asc', label: 'Ascendente' },
+                ]}
+                placeholder="Dirección"
+                maxMenuHeight={120}
+              />
             </label>
-            <div className="self-end">
+            <div className="self-end sm:col-span-2 xl:col-span-1">
               <button
                 onClick={clearFilters}
-                className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-200 transition"
+                className="w-full xl:w-auto px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-200 transition"
               >
                 Limpiar filtros
               </button>
@@ -765,9 +886,9 @@ const DecomisosCargadosPage = () => {
       </div>
 
       {editModalOpen && editingDecomiso && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-5xl overflow-y-auto max-h-[90vh] rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
-            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+          <div className="w-full max-w-5xl overflow-y-auto max-h-[calc(100vh-1.5rem)] sm:max-h-[90vh] rounded-2xl sm:rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 sm:px-6 py-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Editar Decomiso</h2>
                 <p className="text-sm text-slate-500 mt-1">
@@ -782,7 +903,7 @@ const DecomisosCargadosPage = () => {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-4 sm:px-6 py-5 space-y-5">
               {editErrors.length > 0 && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   <p className="font-semibold mb-2">Corrige los siguientes errores:</p>
@@ -839,7 +960,7 @@ const DecomisosCargadosPage = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                         <div>
                           <label className="text-xs font-semibold text-slate-500">Cantidad</label>
                           <input
@@ -947,8 +1068,8 @@ const DecomisosCargadosPage = () => {
               ))}
             </div>
           ) : (
-            <div className="flex justify-center">
-              <div className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
+            <div className="w-full max-w-full">
+              <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table className="min-w-[900px] w-full text-sm text-center text-slate-700">
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
                     <tr>
@@ -1016,7 +1137,7 @@ const DecomisosCargadosPage = () => {
                           {/* Fila expandida con detalles */}
                           {isExpanded && d.detalles && d.detalles.length > 0 && (
                             <tr className="bg-slate-50 border-b">
-                              <td colSpan="7" className="px-6 py-4">
+                              <td colSpan="8" className="px-6 py-4">
                                 <div className="bg-white rounded-lg p-4 border border-slate-200">
                                   <p className="font-semibold text-slate-700 mb-3 text-sm">
                                     📋 Detalles del Decomiso ({d.detalles.length})
@@ -1025,7 +1146,7 @@ const DecomisosCargadosPage = () => {
                                     {d.detalles.map((det, detIdx) => (
                                       <div
                                         key={detIdx}
-                                        className="bg-slate-100 rounded p-3 text-sm grid grid-cols-2 gap-3"
+                                        className="bg-slate-100 rounded p-3 text-sm grid grid-cols-1 sm:grid-cols-2 gap-3"
                                       >
                                         <div>
                                           <p className="font-semibold text-slate-800">

@@ -263,6 +263,20 @@ export default function ParteDecomisadaAdmin() {
       return;
     }
 
+    // Validar duplicado (normalizar comparación)
+    const nombreNorm = String(form.nombre_parte).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const tipoNorm = String(form.id_tipo_parte_deco);
+    const existeDuplicado = partes.some((p) => {
+      const pNombreNorm = (p.nombre_parte || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const pTipo = String(p.id_tipo_parte_deco || '');
+      return pNombreNorm === nombreNorm && pTipo === tipoNorm && p.id_parte !== editandoId;
+    });
+
+    if (existeDuplicado) {
+      setError('❌ Esta parte ya existe para este tipo');
+      return;
+    }
+
     const payload = {
       id_tipo_parte_deco: form.id_tipo_parte_deco,
       nombre_parte: String(form.nombre_parte).trim(),

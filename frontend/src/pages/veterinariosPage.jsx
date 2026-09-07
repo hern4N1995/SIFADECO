@@ -217,6 +217,43 @@ export default function VeterinariosPage() {
       return;
     }
 
+    // Validar matrícula duplicada
+    const matriculaExistente = veterinarios.some((v) => {
+      const vId = v.id_veterinario || v.id;
+      return v.matricula === form.matricula && vId !== editandoId;
+    });
+
+    if (matriculaExistente) {
+      mostrarFeedback('❌ Esta matrícula ya está registrada', 'error');
+      return;
+    }
+
+    // Validar email duplicado (si se proporciona)
+    if (form.email?.trim()) {
+      const emailExistente = veterinarios.some((v) => {
+        const vId = v.id_veterinario || v.id;
+        return v.email && v.email.toLowerCase() === form.email.toLowerCase() && vId !== editandoId;
+      });
+
+      if (emailExistente) {
+        mostrarFeedback('❌ Este email ya está registrado', 'error');
+        return;
+      }
+    }
+
+    // Validar DNI duplicado (si se proporciona)
+    if (form.dni?.trim()) {
+      const dniExistente = veterinarios.some((v) => {
+        const vId = v.id_veterinario || v.id;
+        return v.dni && v.dni === form.dni && vId !== editandoId;
+      });
+
+      if (dniExistente) {
+        mostrarFeedback('❌ Este DNI ya está registrado', 'error');
+        return;
+      }
+    }
+
     try {
       if (editandoId) {
         await api.put(`/veterinarios/${editandoId}`, form);

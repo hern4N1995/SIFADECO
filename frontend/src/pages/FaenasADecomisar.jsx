@@ -116,7 +116,7 @@ export default function FaenasADecomisar() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery('(max-width: 1023px)');
   const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 20);
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -494,11 +494,13 @@ export default function FaenasADecomisar() {
      ------------------------- */
   const FaenaCard = ({ f }) => (
     <div
-      className="rounded-lg shadow-sm border p-3 mb-3 bg-white border-slate-200"
+      className="rounded-lg shadow-sm border bg-white border-slate-200"
       style={{
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
+        padding: '12px',
+        marginBottom: '12px',
         wordBreak: 'break-word',
         overflowWrap: 'anywhere',
         whiteSpace: 'normal',
@@ -574,17 +576,17 @@ export default function FaenasADecomisar() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-6 sm:px-6 sm:py-8 lg:px-8 box-border pb-24 overflow-x-hidden">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center drop-shadow mb-6">
           🩺 Faenas a Decomisar
         </h1>
 
         {/* Controles: Filtros de Fecha y Hora + Selector de Filas */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-6">
           <div className="max-w-5xl mx-auto space-y-4">
             {/* Fila 1: Filtro de Fecha */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <div>
                 <label htmlFor="filterDateStart" className="block text-xs font-semibold text-slate-700 mb-2">
                   Fecha Inicio
@@ -638,11 +640,11 @@ export default function FaenasADecomisar() {
             </div>
 
             {/* Fila 2: Filtro por Día Relativo + Selector de Filas */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-4 border-t border-slate-200">
               {/* Filtros de Día */}
-              <div className="flex items-center gap-4 justify-center flex-wrap">
-                <div className="flex items-center gap-2 select-none">
-                  <span className="text-sm text-slate-700">Actual</span>
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 sm:justify-center sm:flex-wrap">
+                <div className="flex items-center gap-2 select-none min-w-0">
+                  <span className="text-xs sm:text-sm text-slate-700">Actual</span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -682,11 +684,11 @@ export default function FaenasADecomisar() {
                 </div>
 
                 <div
-                  className={`flex items-center gap-2 select-none ${
+                  className={`flex items-center gap-2 select-none min-w-0 ${
                     !previousDate ? 'opacity-50' : ''
                   }`}
                 >
-                  <span className="text-sm text-slate-700">Anterior</span>
+                  <span className="text-xs sm:text-sm text-slate-700">Anterior</span>
                   <span
                     role="button"
                     tabIndex={previousDate ? 0 : -1}
@@ -731,11 +733,11 @@ export default function FaenasADecomisar() {
                 </div>
 
                 <div
-                  className={`flex items-center gap-2 select-none ${
+                  className={`flex items-center gap-2 select-none min-w-0 ${
                     !nextDate ? 'opacity-50' : ''
                   }`}
                 >
-                  <span className="text-sm text-slate-700">Siguiente</span>
+                  <span className="text-xs sm:text-sm text-slate-700">Siguiente</span>
                   <span
                     role="button"
                     tabIndex={nextDate ? 0 : -1}
@@ -779,8 +781,8 @@ export default function FaenasADecomisar() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 select-none">
-                  <span className="text-sm text-slate-700">Todas</span>
+                <div className="flex items-center gap-2 select-none min-w-0">
+                  <span className="text-xs sm:text-sm text-slate-700">Todas</span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -821,7 +823,7 @@ export default function FaenasADecomisar() {
               </div>
 
               {/* Selector de Filas */}
-              <div style={{ minWidth: 0 }} className="col-span-0.75 max-w-[90px]">
+              <div style={{ minWidth: 0 }} className="w-full sm:w-[90px] sm:self-center">
                 <SelectField
                   label="Filas"
                   value={
@@ -867,18 +869,18 @@ export default function FaenasADecomisar() {
         <>
           {isMobile ? (
             <div
-              className="max-w-full mx-auto px-3"
-              style={{ boxSizing: 'border-box' }}
+              className="w-full"
+              style={{ boxSizing: 'border-box', padding: '0 12px' }}
             >
               {paginatedFaenas.map((f) => (
                 <FaenaCard key={f.id_faena} f={f} />
               ))}
             </div>
           ) : (
-            <div className="flex justify-center">
-              <div className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 max-w-full">
+            <div className="w-full max-w-full">
+              <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table
-                  className="w-full text-sm text-center text-slate-700"
+                  className="w-full min-w-[1100px] text-sm text-center text-slate-700"
                   style={{ tableLayout: 'auto' }}
                 >
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
@@ -1001,10 +1003,10 @@ export default function FaenasADecomisar() {
 
       {/* Modal Preview */}
       {previewOpen && previewFaena && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-1.5rem)] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+            <div className="flex justify-between items-start gap-3 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 break-words">
                 📋 Vista Previa - Faena #{previewFaena.id_faena}
               </h2>
               <button

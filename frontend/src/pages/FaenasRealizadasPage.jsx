@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 
@@ -120,6 +121,7 @@ export default function FaenasRealizadasPage() {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  const navigate = useNavigate();
 
   const rowsPerPageOptions = [4, 7, 10, 20];
   const sortOptions = [
@@ -296,11 +298,11 @@ export default function FaenasRealizadasPage() {
   };
 
   const handleDecomisar = (event, id_faena) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const targetPath = `/decomisos/nuevo/${id_faena}`;
-    window.open(targetPath, '_blank', 'noopener,noreferrer');
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    navigate(`/decomisos/nuevo/${id_faena}`);
   };
 
   const handleVerDetalle = async (id_faena) => {

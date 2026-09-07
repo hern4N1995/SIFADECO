@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
+import { HiEye, HiEyeSlash } from 'react-icons/hi2';
 
 /* ------------------------------------------------------------------ */
 /*  InputField reutilizable                                           */
@@ -13,32 +14,55 @@ const InputField = ({
   type = 'text',
   disabled = false,
   placeholder = '',
+  showPasswordToggle = false,
+  showPassword = false,
+  onTogglePassword = null,
 }) => (
   <div className="flex flex-col">
     <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      disabled={disabled}
-      placeholder={placeholder}
-      className={`w-full border-2 rounded-lg px-4 py-3 text-sm transition-all duration-200 ${
-        disabled
-          ? 'bg-gray-100 border-gray-200 text-gray-500'
-          : 'bg-gray-50 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300'
-      }`}
-    />
+    <div className="relative">
+      <input
+        type={showPasswordToggle && showPassword ? 'text' : type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`w-full border-2 rounded-lg px-4 py-3 text-sm transition-all duration-200 ${
+          showPasswordToggle ? 'pr-12' : ''
+        } ${
+          disabled
+            ? 'bg-gray-100 border-gray-200 text-gray-500'
+            : 'bg-gray-50 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300'
+        }`}
+      />
+      {showPasswordToggle && onTogglePassword && (
+        <button
+          type="button"
+          onClick={onTogglePassword}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+        >
+          {showPassword ? (
+            <HiEyeSlash size={20} />
+          ) : (
+            <HiEye size={20} />
+          )}
+        </button>
+      )}
+    </div>
   </div>
 );
 
 export default function PerfilPage() {
   const [usuario, setUsuario] = useState(null);
   const [form, setForm] = useState({ email: '', n_telefono: '' });
-  const [editMode, setEditMode] = useState({ email: false, n_telefono: false });
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [editMode, setEditMode] = useState({ email: false, n_telefono: false, password: false });
+  const [showPasswords, setShowPasswords] = useState({ oldPassword: false, newPassword: false, confirmPassword: false });
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -59,6 +83,16 @@ export default function PerfilPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+    setPasswordError('');
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const buildPayload = () => {
@@ -90,10 +124,42 @@ export default function PerfilPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMensaje('✅ Datos actualizados correctamente.');
-      setEditMode({ email: false, n_telefono: false });
+      setEditMode({ email: false, n_telefono: false, password: false });
     } catch (err) {
       console.error('❌ Error al actualizar perfil:', err);
       setMensaje('❌ Error al actualizar datos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('❌ Las contraseñas no coinciden.');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('❌ La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setLoading(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      await api.put('/usuarios/cambiar-contrasena', passwordForm, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMensaje('✅ Contraseña actualizada correctamente.');
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setEditMode((prev) => ({ ...prev, password: false }));
+    } catch (err) {
+      console.error('❌ Error al cambiar contraseña:', err);
+      setPasswordError(err.response?.data?.error || '❌ Error al cambiar la contraseña.');
     } finally {
       setLoading(false);
     }
@@ -104,7 +170,12 @@ export default function PerfilPage() {
   };
 
   const cancelEdit = (field) => {
-    setForm((prev) => ({ ...prev, [field]: usuario[field] || '' }));
+    if (field === 'password') {
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordError('');
+    } else {
+      setForm((prev) => ({ ...prev, [field]: usuario[field] || '' }));
+    }
     setEditMode((prev) => ({ ...prev, [field]: false }));
   };
 
@@ -146,7 +217,7 @@ export default function PerfilPage() {
               disabled
             />
             <InputField label="Planta" value={usuario.planta} disabled />
-            <InputField label="Rol" value={usuario.rol} disabled />
+            <InputField label="Rol" value={usuario.rol_descripcion} disabled />
 
             {/* Email editable */}
             <div className="flex flex-col">
@@ -234,6 +305,95 @@ export default function PerfilPage() {
             </div>
           )}
         </div>
+
+        {/* Sección de cambio de contraseña (para roles 1, 2 y 3) */}
+        {(usuario.id_rol === 1 || usuario.id_rol === 2 || usuario.id_rol === 3) && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">
+              🔐 Cambiar Contraseña
+            </h2>
+
+            <form onSubmit={handleChangePassword} className="space-y-6">
+              {!editMode.password ? (
+                <button
+                  type="button"
+                  onClick={() => toggleEdit('password')}
+                  className="px-6 py-3 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition"
+                >
+                  ✏️ Cambiar Contraseña
+                </button>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <InputField
+                      label="Contraseña Actual"
+                      name="oldPassword"
+                      value={passwordForm.oldPassword}
+                      onChange={handlePasswordChange}
+                      type="password"
+                      required
+                      placeholder="Ingresa tu contraseña actual"
+                      showPasswordToggle={true}
+                      showPassword={showPasswords.oldPassword}
+                      onTogglePassword={() => togglePasswordVisibility('oldPassword')}
+                    />
+                    <InputField
+                      label="Nueva Contraseña"
+                      name="newPassword"
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange}
+                      type="password"
+                      required
+                      placeholder="Ingresa tu nueva contraseña"
+                      showPasswordToggle={true}
+                      showPassword={showPasswords.newPassword}
+                      onTogglePassword={() => togglePasswordVisibility('newPassword')}
+                    />
+                    <InputField
+                      label="Confirmar Contraseña"
+                      name="confirmPassword"
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange}
+                      type="password"
+                      required
+                      placeholder="Confirma tu nueva contraseña"
+                      showPasswordToggle={true}
+                      showPassword={showPasswords.confirmPassword}
+                      onTogglePassword={() => togglePasswordVisibility('confirmPassword')}
+                    />
+                  </div>
+
+                  {/* Errores de validación */}
+                  {passwordError && (
+                    <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+                      {passwordError}
+                    </div>
+                  )}
+
+                  {/* Botones */}
+                  <div className="flex gap-3 justify-end pt-4">
+                    <button
+                      type="button"
+                      onClick={() => cancelEdit('password')}
+                      className="px-6 py-3 bg-gray-400 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className={`px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition ${
+                        loading ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {loading ? 'Guardando...' : 'Cambiar Contraseña'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

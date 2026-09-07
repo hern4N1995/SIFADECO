@@ -10,6 +10,7 @@ const INPUT_BASE_CLASS =
   'focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
 
 function SelectField({
+  label,
   value,
   onChange,
   options = [],
@@ -30,16 +31,20 @@ function SelectField({
       backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
-      boxShadow: isFocusing
+      boxShadow: isFocusing && !isDisabled
         ? '0 0 0 1px #000'
-        : state.isFocused
-        ? '0 0 0 4px #d1fae5'
-        : 'none',
-      transition: 'all 50ms ease',
-      display: 'flex',
-      alignItems: 'center',
-      cursor: isDisabled ? 'not-allowed' : 'default',
-      opacity: isDisabled ? 0.85 : 1,
+        : state.isFocused && !isDisabled
+          ? '0 0 0 4px #d1fae5'
+          : 'none',
+      transition: 'all 100ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
+      '&:hover': {
+        borderColor: isDisabled ? '#e5e7eb' : '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
+      },
     }),
     valueContainer: (base) => ({
       ...base,
@@ -77,7 +82,7 @@ function SelectField({
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
-      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.08)',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
     }),
     option: (base, { isFocused }) => ({
       ...base,
@@ -85,13 +90,16 @@ function SelectField({
       padding: '10px 16px',
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
-      cursor: 'pointer',
     }),
-    indicatorSeparator: () => ({ display: 'none' }),
   };
 
   return (
-    <div className={className}>
+    <div className={label ? 'flex flex-col' : ''}>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
       <Select
         value={value ?? null}
         onChange={(sel) => onChange(sel ?? null)}
@@ -713,9 +721,9 @@ export default function TropasCargadas() {
               </div>
             </div>
 
-            {/* Paginación replicada de FaenaPage */}
+            {/* Paginación */}
             {tropas.length > pageSize && (
-              <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+              <div className="mt-8 mb-6 flex justify-center items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                   disabled={currentPage === 1}

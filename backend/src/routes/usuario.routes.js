@@ -36,6 +36,7 @@ const {
   updatePerfil,
   usuarioActual,
   cambiarEstadoUsuario,
+  cambiarContrasenia,
 } = require('../controllers/usuario.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -45,6 +46,7 @@ router.get('/usuario-actual', verificarToken, usuarioActual);
 // ✅ Rutas de perfil del usuario logueado (deben ir antes que las rutas con :id)
 router.get('/perfil', verificarToken, getPerfil);
 router.put('/perfil', verificarToken, updatePerfil);
+router.put('/cambiar-contrasena', verificarToken, cambiarContrasenia);
 
 // Rutas generales
 router.get('/', obtenerUsuarios);

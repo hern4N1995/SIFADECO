@@ -10,6 +10,8 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [perfilOpen, setPerfilOpen] = useState(false);
   const perfilRef = useRef(null);
+  const perfilButtonRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
   const [user, setUser] = useState(null);
   const location = useLocation();
@@ -32,6 +34,17 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handlePerfilToggle = () => {
+    if (!perfilOpen && perfilButtonRef.current) {
+      // Calcular posición del dropdown
+      const rect = perfilButtonRef.current.getBoundingClientRect();
+      const newTop = rect.bottom + 8; // 8px debajo del botón
+      const newRight = window.innerWidth - rect.right;
+      setDropdownPos({ top: newTop, right: newRight });
+    }
+    setPerfilOpen((prev) => !prev);
+  };
 
   const handleLogout = () => {
     clearAuthStorage();
@@ -101,14 +114,15 @@ export default function Header() {
 
             {/* Perfil - Fuera del nav para que no se oculte */}
             {user && (
-              <div className="flex items-center gap-2 md:gap-3 ml-2 md:ml-4 flex-shrink-0">
+              <div className="flex items-center gap-2 md:gap-3 ml-2 md:ml-4 md:mr-0 flex-shrink-0">
                 <span className="text-xs sm:text-sm font-medium text-white hidden md:inline whitespace-nowrap">
                   Bienvenido, {user.nombre}
                 </span>
 
-                <div ref={perfilRef} className="relative">
+                <div ref={perfilRef}>
                   <button
-                    onClick={() => setPerfilOpen((prev) => !prev)}
+                    ref={perfilButtonRef}
+                    onClick={handlePerfilToggle}
                     className="flex items-center gap-1 px-2 py-2 bg-white/0 text-white rounded-full hover:bg-white/10 transition flex-shrink-0"
                   >
                     <img
@@ -133,19 +147,24 @@ export default function Header() {
 
                   {perfilOpen && (
                     <div
-                      className="absolute right-0 mt-2 w-44 text-white rounded-lg shadow-lg z-50 overflow-hidden"
-                      style={{ backgroundColor: '#5ba943' }}
+                      className="fixed w-30 text-white rounded-lg shadow-lg z-50 overflow-hidden"
+                      style={{
+                        backgroundColor: '#4c9636',
+                        top: `${dropdownPos.top}px`,
+                        right: `${dropdownPos.right}px`,
+                      }}
                     >
                       <button
                         onClick={handleVerPerfil}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-white/10"
+                        className="w-full text-center px-4 py-2 text-sm hover:bg-white/10"
                       >
                         Ver perfil
                       </button>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-red-600"
+                        className="w-full text-center px-4 py-2 text-sm bg-red-900/20 hover:bg-red-200 flex items-center gap-2 font-medium transition"
                       >
+                        <HiXMark size={16} className="flex-shrink-0" />
                         Cerrar sesión
                       </button>
                     </div>
@@ -154,8 +173,16 @@ export default function Header() {
               </div>
             )}
 
-            {/* Mobile menu button */}
-            <div className="md:hidden">
+            {/* Mobile menu button and login button */}
+            <div className="md:hidden -ml-20 flex items-center gap-2">
+              {!user && (
+                <button
+                  onClick={() => setLoginAbierto(true)}
+                  className="px-3 py-2 rounded-lg bg-white text-primary font-semibold hover:bg-white/90 transition whitespace-nowrap text-sm"
+                >
+                  Iniciar Sesión
+                </button>
+              )}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="text-white p-2"
@@ -170,50 +197,40 @@ export default function Header() {
       {/* Mobile menu drawer */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="md:hidden bg-gradient-to-b from-primary to-secondary overflow-hidden shadow-lg"
-          >
-            <nav className="flex flex-col items-center space-y-4 py-6">
-              {navLinks
-                .filter((l) => l.show)
-                .map(({ to, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className="text-white/80 hover:text-white text-lg font-medium"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {label}
-                  </NavLink>
-                ))}
-
-              {!user ? (
-                <button
-                  onClick={() => {
-                    setLoginAbierto(true);
-                    setMenuOpen(false);
-                  }}
-                  className="text-white/80 hover:text-white text-lg font-medium"
-                >
-                  Iniciar Sesión
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMenuOpen(false);
-                  }}
-                  className="text-red-300 hover:text-red-200 text-lg font-medium"
-                >
-                  Cerrar Sesión
-                </button>
-              )}
-            </nav>
-          </motion.div>
+          <>
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: 'tween', duration: 0.2 }}
+              className="fixed inset-0 z-30 bg-black/50 md:hidden"
+              onClick={() => setMenuOpen(false)}
+            />
+            {/* Mobile menu drawer */}
+            <motion.div
+              initial={{ y: '-100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '-100%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed top-20 left-0 right-0 z-40 md:hidden bg-gradient-to-b from-primary to-secondary overflow-hidden shadow-lg"
+            >
+              <nav className="flex flex-col items-center space-y-4 py-6">
+                {navLinks
+                  .filter((l) => l.show)
+                  .map(({ to, label }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      className="text-white/80 hover:text-white text-lg font-medium"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {label}
+                    </NavLink>
+                  ))}
+              </nav>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

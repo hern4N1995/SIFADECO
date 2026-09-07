@@ -300,6 +300,26 @@ export default function CategoriaEspecieAdmin() {
       return;
     }
 
+    // Validar duplicado (normalizar comparación)
+    const descNorm = form.descripcion.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const idEspecieNorm = String(form.id_especie.value);
+    const existeDuplicado = categorias.some((c) => {
+      const cDescNorm = (c.descripcion || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const cIdEspecie = String(c.id_especie || '');
+      return cDescNorm === descNorm && cIdEspecie === idEspecieNorm && c.id_categoria !== editandoId;
+    });
+
+    if (existeDuplicado) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: '❌ Esta categoría ya existe para esta especie',
+        onConfirm: () => setModal({ ...modal, isOpen: false }),
+      });
+      return;
+    }
+
     const payload = {
       descripcion: form.descripcion.trim(),
       id_especie: form.id_especie.value,

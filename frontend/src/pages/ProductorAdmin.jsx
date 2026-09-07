@@ -113,6 +113,17 @@ export default function ProductorAdmin() {
       return;
     }
 
+    // Validar que el CUIT no esté duplicado
+    const existeDuplicado = productores.some((p) => {
+      const cuitExistente = normalizarCuit(String(p.cuit || ''));
+      return cuitExistente === cuitDigitos;
+    });
+
+    if (existeDuplicado) {
+      setError('❌ Este CUIT ya está registrado.');
+      return;
+    }
+
     try {
       const res = await api.post('/productores', {
         cuit: cuitDigitos, // Guardar solo números
