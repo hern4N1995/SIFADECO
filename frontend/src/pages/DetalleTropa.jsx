@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import AppNotification from '../components/AppNotification';
-import { formatDateFromDB } from '../utils/dateFormatter';
+import { formatDateFromDB, formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -665,19 +665,8 @@ export default function DetalleTropa() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Convertir fecha ISO a formato YYYY-MM-DD para input type="date"
-  const formatDateForInput = (isoDate) => {
-    if (!isoDate) return '';
-    try {
-      const date = new Date(isoDate);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch (e) {
-      return '';
-    }
-  };
+  // Usar la función del utils para evitar problemas de zona horaria
+  const formatDateForInput = (isoDate) => formatDateForInputUtil(isoDate);
 
   const showToast = (type, text, ms = 3000) => {
     setToast({ type, text });
@@ -2166,16 +2155,23 @@ export default function DetalleTropa() {
   const saveTropaChanges = async () => {
     try {
       setSavingTropa(true);
+      
+      console.log('[DetalleTropa] Guardando cambios de tropa');
+      console.log('[DetalleTropa] fecha_ingreso original:', tropaEdicion.fecha_ingreso);
+      console.log('[DetalleTropa] fecha_ingreso después de formatDateForAPI:', formatDateForAPI(tropaEdicion.fecha_ingreso));
+      
       const payload = {
         n_tropa: tropaEdicion.n_tropa,
         dte_dtu: tropaEdicion.dte_dtu,
         guia_policial: tropaEdicion.guia_policial,
-        fecha_ingreso: tropaEdicion.fecha_ingreso,
+        fecha_ingreso: formatDateForAPI(tropaEdicion.fecha_ingreso),
         id_titular_faena: tropaEdicion.id_titular_faena,
         id_productor: tropaEdicion.id_productor,
         id_departamento: tropaEdicion.id_departamento,
         id_planta: tropaEdicion.id_planta,
       };
+      
+      console.log('[DetalleTropa] Payload completo:', payload);
 
       await api.put(`/tropas/${id}`, payload, {
         headers: getTokenHeaders(),
@@ -2274,12 +2270,14 @@ export default function DetalleTropa() {
                 <input
                   type="date"
                   value={formatDateForInput(tropaEdicion.fecha_ingreso) || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    console.log('[DetalleTropa] Fecha ingreso original:', tropaEdicion.fecha_ingreso);
+                    console.log('[DetalleTropa] Valor del input (e.target.value):', e.target.value);
                     setTropaEdicion((prev) => ({
                       ...prev,
                       fecha_ingreso: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className={INPUT_BASE_CLASS}
                 />
               </div>

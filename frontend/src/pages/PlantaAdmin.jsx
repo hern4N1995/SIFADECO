@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
 import AppNotification from 'src/components/AppNotification';
+import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from 'src/utils/dateFormatter';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField con estilos visuales unificados                      */
@@ -379,7 +380,7 @@ export default function PlantaAdmin() {
         id_departamento: nuevaPlanta.departamento?.value ?? null,
         direccion: nuevaPlanta.direccion,
         cuit: nuevaPlanta.cuit.replace(/\D/g, ''),
-        fecha_habilitacion: nuevaPlanta.fecha_habilitacion,
+        fecha_habilitacion: formatDateForAPI(nuevaPlanta.fecha_habilitacion),
         norma_legal: nuevaPlanta.norma_legal,
         estado: nuevaPlanta.estado,
       };
@@ -432,22 +433,8 @@ export default function PlantaAdmin() {
 
     const idVal = planta.id ?? planta.id_planta ?? null;
 
-    // Normalize date to yyyy-MM-dd for <input type="date"> (remove timezone/time)
-    const formatDateForInput = (val) => {
-      if (!val) return '';
-      const s = String(val);
-      // If already in YYYY-MM-DD, return as-is
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-      // If ISO with T, take left side (already yyyy-mm-dd)
-      if (s.includes('T')) return s.split('T')[0];
-      // Try to parse ISO/date and use UTC to avoid local timezone shifts
-      const d = new Date(s);
-      if (isNaN(d.getTime())) return '';
-      const yyyy = d.getUTCFullYear();
-      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-      const dd = String(d.getUTCDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
+    // Usar la función del utils para evitar problemas de zona horaria
+    const formatDateForInput = (val) => formatDateForInputUtil(val);
 
     // Normalizar estructura de departamento para el editor
     const departamentoValue = planta.departamento?.id ?? planta.id_departamento ?? null;
@@ -511,7 +498,7 @@ export default function PlantaAdmin() {
       id_departamento: editado?.departamento?.value ?? editado?.id_departamento ?? null,
       direccion: editado.direccion,
       cuit: editado.cuit?.replace(/\D/g, '') || null,
-      fecha_habilitacion: editado?.fecha_habilitacion || null,
+      fecha_habilitacion: formatDateForAPI(editado?.fecha_habilitacion) || null,
       norma_legal: editado.norma_legal,
       estado: Boolean(editado.estado),
     };

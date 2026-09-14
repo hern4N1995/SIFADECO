@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(window.matchMedia(query).matches);
@@ -147,10 +148,52 @@ const DecomisosCargadosPage = () => {
   const [editingDecomiso, setEditingDecomiso] = useState(null);
   const [editErrors, setEditErrors] = useState([]);
   const [editSaving, setEditSaving] = useState(false);
+  const [tiposParte, setTiposParte] = useState([]);
+  const [partes, setPartes] = useState([]);
+  const [afecciones, setAfecciones] = useState([]);
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : 6;
+
+  // Referencia al contenedor del modal para scroll automático
+  const editModalContentRef = React.useRef(null);
+
+  // Scroll al top cuando aparezcan errores
+  React.useEffect(() => {
+    if (editErrors.length > 0 && editModalContentRef.current) {
+      editModalContentRef.current.scrollTop = 0;
+    }
+  }, [editErrors]);
+
+  // Helper para obtener fecha de hoy en formato YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Validación de fecha: Verifica que sea formato YYYY-MM-DD válido con año >= 1000
+  // Evita bloquear mientras se escribe el año (ej: "0002", "0020", "0202")
+  const isValidDateString = (dateStr) => {
+    if (!dateStr || dateStr.length !== 10) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+    const [y, m, d] = dateStr.split('-').map(x => Number(x));
+    // ⚠️ CRÍTICO: Año debe ser >= 1000 (rechaza años como 0002, 0020, 0202)
+    if (y < 1000 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    return true;
+  };
+
+  // Validación de rango: Hasta no debe ser anterior a Desde
+  // Solo validar cuando ambas fechas son válidas y están completas
+  const isRangeInvalid = 
+    isValidDateString(filterDesde) && 
+    isValidDateString(filterHasta) && 
+    filterDesde > filterHasta;
 
   // Obtener rol y planta del usuario desde localStorage
   useEffect(() => {
@@ -169,6 +212,23 @@ const DecomisosCargadosPage = () => {
       console.error('[DecomisosCargadosPage] Error al obtener usuario:', err);
       setRol(1); // Default a admin para mostrar datos
     }
+  }, []);
+
+  // Cargar datos base para el modal de edición (tiposParte, partes, afecciones)
+  useEffect(() => {
+    const fetchDatosBase = async () => {
+      try {
+        const resBase = await api.get('/decomisos/datos-base');
+        console.log('[DecomisosCargadosPage] Datos base cargados:', resBase.data);
+        const base = resBase.data;
+        setTiposParte(Array.isArray(base?.tiposParte) ? base.tiposParte : []);
+        setPartes(Array.isArray(base?.partes) ? base.partes : []);
+        setAfecciones(Array.isArray(base?.afecciones) ? base.afecciones : []);
+      } catch (err) {
+        console.error('[DecomisosCargadosPage] Error cargando datos base:', err.message);
+      }
+    };
+    fetchDatosBase();
   }, []);
 
   useEffect(() => {
@@ -236,7 +296,7 @@ const DecomisosCargadosPage = () => {
               nombre_parte: row.nombre_parte,
               afeccion: row.afeccion,
             });
-            decomiso.cantidad_decomisada += row.cantidad ? Number(row.cantidad) : 0;
+            decomiso.cantidad_decomisada += row.animales_afectados ? Number(row.animales_afectados) : 0;
           }
         });
 
@@ -408,6 +468,42 @@ const DecomisosCargadosPage = () => {
     });
   };
 
+  const addNewEditingDetalle = () => {
+    setEditingDecomiso((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        detalles: [
+          ...(prev.detalles || []),
+          {
+            id_tipo_parte_deco: '',
+            id_parte_decomisada: '',
+            id_afeccion: '',
+            cantidad: '',
+            animales_afectados: '',
+            peso_kg: '',
+            destino_decomiso: '',
+            observaciones: '',
+            isNewDetail: true,
+          },
+        ],
+      };
+    });
+  };
+
+  const removeEditingDetalle = (index) => {
+    setEditingDecomiso((prev) => {
+      if (!prev) return prev;
+      const detalles = [...(prev.detalles || [])];
+      // Marcar como eliminado en lugar de remover del array
+      detalles[index] = { ...detalles[index], isDeleted: true };
+      return {
+        ...prev,
+        detalles,
+      };
+    });
+  };
+
   const closeEditModal = () => {
     setEditModalOpen(false);
     setEditingDecomiso(null);
@@ -446,11 +542,11 @@ const DecomisosCargadosPage = () => {
           const hoy = new Date();
           const hoyMs = dateToLocalDateOnlyMs(hoy);
 
-          // Nuevo comportamiento solicitado:
-          // - `Desde` actúa como límite superior (<=). Muestra fechas anteriores o iguales a `Desde`.
-          // - `Hasta` actúa como límite inferior (>=). Muestra fechas posteriores o iguales a `Hasta`.
-          // - Si solo hay `Desde` -> filtrar fechas <= Desde (inclusive).
-          // - Si solo hay `Hasta` -> filtrar fechas >= Hasta (inclusive).
+          // Semántica estándar de rango de fechas:
+          // - `Desde` actúa como límite inferior (>=). Muestra fechas posteriores o iguales a `Desde`.
+          // - `Hasta` actúa como límite superior (<=). Muestra fechas anteriores o iguales a `Hasta`.
+          // - Si solo hay `Desde` -> filtrar fechas >= Desde (inclusive).
+          // - Si solo hay `Hasta` -> filtrar fechas <= Hasta (inclusive).
           // - Si hay ambos -> aplicar rango inclusivo entre las dos fechas (min..max).
 
           const desdeStartMs = desdeDate ? dateToLocalDateOnlyMs(desdeDate) : null;
@@ -462,13 +558,13 @@ const DecomisosCargadosPage = () => {
           let high = null;
 
           if (desdeDate && !hastaDate) {
-            // Solo `Desde`: fechas <= Desde
-            high = desdeEndMs;
-            low = null;
-          } else if (!desdeDate && hastaDate) {
-            // Solo `Hasta`: fechas >= Hasta
-            low = hastaStartMs;
+            // Solo `Desde`: fechas >= Desde
+            low = desdeStartMs;
             high = null;
+          } else if (!desdeDate && hastaDate) {
+            // Solo `Hasta`: fechas <= Hasta
+            high = hastaEndMs;
+            low = null;
           } else if (desdeDate && hastaDate) {
             // Ambos: rango entre las dos fechas (min..max)
             const minDateMs = Math.min(desdeStartMs, hastaStartMs);
@@ -535,23 +631,28 @@ const DecomisosCargadosPage = () => {
       errors.push('La fecha del decomiso es obligatoria.');
     }
 
-    const totalCantidadDecomiso = (editingDecomiso.detalles || []).reduce((sum, det) => {
-      const cantidad = det.cantidad != null ? Number(String(det.cantidad).trim()) : 0;
-      return sum + cantidad;
+    // Filtrar detalles no eliminados para validaciones y envío
+    const detallesActivos = (editingDecomiso.detalles || []).filter((det) => !det.isDeleted);
+
+    const totalAnimalesAfectados = detallesActivos.reduce((sum, det) => {
+      const animales = det.animales_afectados != null ? Number(String(det.animales_afectados).trim()) : 0;
+      return sum + animales;
     }, 0);
 
-    if (totalCantidadDecomiso > editingDecomiso.cantidad_faena) {
+    if (totalAnimalesAfectados > editingDecomiso.cantidad_faena) {
       errors.push(
-        `La cantidad total de decomiso (${totalCantidadDecomiso}) no puede superar la cantidad faenada (${editingDecomiso.cantidad_faena}).`
+        `La cantidad total de animales afectados (${totalAnimalesAfectados}) no puede superar la cantidad faenada (${editingDecomiso.cantidad_faena}).`
       );
     }
 
-    const detallesPayload = (editingDecomiso.detalles || []).map((det, idx) => {
+    const detallesPayload = detallesActivos.map((det, idx) => {
       const row = idx + 1;
       const cantidad = det.cantidad != null ? String(det.cantidad).trim() : '';
       const destino = String(det.destino_decomiso || '').trim();
       const pesoStr = det.peso_kg != null ? String(det.peso_kg).trim() : '';
       const animales = det.animales_afectados != null ? String(det.animales_afectados).trim() : '';
+      const tipoParteId = det.id_tipo_parte_deco || '';
+      const parteId = det.id_parte_decomisada || '';
 
       if (!cantidad || Number(cantidad) <= 0) {
         errors.push(`Detalle ${row}: Cantidad debe ser mayor que 0.`);
@@ -562,16 +663,25 @@ const DecomisosCargadosPage = () => {
       if (pesoStr !== '' && Number.isNaN(Number(pesoStr.replace(',', '.')))) {
         errors.push(`Detalle ${row}: Peso inválido.`);
       }
+      // Validación para detalles nuevos: deben tener tipo y parte seleccionados
+      if (det.isNewDetail) {
+        if (!tipoParteId) {
+          errors.push(`Detalle ${row}: Debés seleccionar un tipo de parte.`);
+        }
+        if (!parteId) {
+          errors.push(`Detalle ${row}: Debés seleccionar una parte decomisada.`);
+        }
+      }
 
       return {
-        id_parte_decomisada: det.id_parte_decomisada,
-        id_afeccion: det.id_afeccion,
+        id_parte_decomisada: parteId || det.id_parte_decomisada,
+        id_afeccion: det.id_afeccion || null,
         cantidad: Number(cantidad),
         animales_afectados: animales ? Number(animales) : 0,
         peso_kg: pesoStr ? Number(pesoStr.replace(',', '.')) : 0,
         destino_decomiso: destino,
         observaciones: det.observaciones || null,
-        fecha_decomiso: editingDecomiso.fecha_decomiso,
+        fecha_decomiso: formatDateForAPI(editingDecomiso.fecha_decomiso),
       };
     });
 
@@ -592,8 +702,8 @@ const DecomisosCargadosPage = () => {
           d.id_decomiso === editingDecomiso.id_decomiso
             ? {
                 ...d,
-                fecha_decomiso: editingDecomiso.fecha_decomiso,
-                detalles: editingDecomiso.detalles.map((det) => ({
+                fecha_decomiso: formatDateForAPI(editingDecomiso.fecha_decomiso),
+                detalles: detallesActivos.map((det) => ({
                   ...det,
                   cantidad: Number(det.cantidad),
                   animales_afectados: det.animales_afectados
@@ -601,8 +711,8 @@ const DecomisosCargadosPage = () => {
                     : 0,
                   peso_kg: det.peso_kg ? Number(det.peso_kg.replace(',', '.')) : 0,
                 })),
-                cantidad_decomisada: editingDecomiso.detalles.reduce(
-                  (sum, det) => sum + (Number(det.cantidad) || 0),
+                cantidad_decomisada: detallesActivos.reduce(
+                  (sum, det) => sum + (Number(det.animales_afectados) || 0),
                   0,
                 ),
               }
@@ -816,7 +926,7 @@ const DecomisosCargadosPage = () => {
                 type="date"
                 value={filterDesde}
                 onChange={(e) => setFilterDesde(e.target.value)}
-                onInput={(e) => setFilterDesde(e.target.value)}
+                max={getTodayDateString()}
                 className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
               />
             </label>
@@ -828,9 +938,19 @@ const DecomisosCargadosPage = () => {
                 type="date"
                 value={filterHasta}
                 onChange={(e) => setFilterHasta(e.target.value)}
-                onInput={(e) => setFilterHasta(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                disabled={isRangeInvalid}
+                max={getTodayDateString()}
+                className={`rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all ${
+                  isRangeInvalid
+                    ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
+                    : 'border-slate-300 bg-slate-50 focus:border-green-500 focus:ring-4 focus:ring-green-100'
+                }`}
               />
+              {isRangeInvalid && (
+                <p className="text-red-600 text-xs mt-1 font-medium">
+                  ⚠️ "Hasta" no puede ser anterior a "Desde"
+                </p>
+              )}
             </label>
           </div>
 
@@ -903,7 +1023,7 @@ const DecomisosCargadosPage = () => {
               </button>
             </div>
 
-            <div className="px-4 sm:px-6 py-5 space-y-5">
+            <div className="px-4 sm:px-6 py-5 space-y-5" ref={editModalContentRef}>
               {editErrors.length > 0 && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   <p className="font-semibold mb-2">Corrige los siguientes errores:</p>
@@ -943,81 +1063,166 @@ const DecomisosCargadosPage = () => {
               <div>
                 <p className="font-semibold text-slate-900 mb-3">Detalles del decomiso</p>
                 <div className="space-y-4">
-                  {editingDecomiso.detalles.map((det, detIdx) => (
-                    <div key={detIdx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-3">
-                        <div>
-                          <p className="text-xs text-slate-500 uppercase mb-1">Parte</p>
-                          <p className="text-sm font-semibold text-slate-800">{det.nombre_parte || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 uppercase mb-1">Tipo</p>
-                          <p className="text-sm text-slate-800">{det.nombre_tipo_parte || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 uppercase mb-1">Afección</p>
-                          <p className="text-sm text-slate-800">{det.afeccion || '—'}</p>
-                        </div>
-                      </div>
+                  {(editingDecomiso.detalles || []).filter((det) => !det.isDeleted).map((det, detIdx) => {
+                    const isNewDetail = det.isNewDetail;
+                    const tipoSelected = tiposParte.find((t) => String(t.id_tipo_parte_deco) === String(det.id_tipo_parte_deco));
+                    const partesDelTipo = partes.filter((p) => String(p.id_tipo_parte_deco) === String(det.id_tipo_parte_deco));
+                    const afeccionSelected = afecciones.find((a) => String(a.id_afeccion) === String(det.id_afeccion));
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500">Cantidad</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={det.cantidad ?? ''}
-                            onChange={(e) => updateEditingDetalle(detIdx, 'cantidad', e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                          />
+                    return (
+                      <div key={detIdx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        {isNewDetail ? (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-500 block mb-2">Tipo de Parte</label>
+                                <select
+                                  value={det.id_tipo_parte_deco || ''}
+                                  onChange={(e) => {
+                                    updateEditingDetalle(detIdx, 'id_tipo_parte_deco', e.target.value);
+                                    updateEditingDetalle(detIdx, 'id_parte_decomisada', '');
+                                  }}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                                >
+                                  <option value="">Seleccionar</option>
+                                  {tiposParte.map((tipo) => (
+                                    <option key={tipo.id_tipo_parte_deco} value={tipo.id_tipo_parte_deco}>
+                                      {tipo.nombre_tipo_parte || tipo.nombre}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-500 block mb-2">Parte Decomisada</label>
+                                <select
+                                  value={det.id_parte_decomisada || ''}
+                                  onChange={(e) => updateEditingDetalle(detIdx, 'id_parte_decomisada', e.target.value)}
+                                  disabled={!det.id_tipo_parte_deco}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <option value="">Seleccionar</option>
+                                  {partesDelTipo.map((parte) => (
+                                    <option key={parte.id_parte_decomisada} value={parte.id_parte_decomisada}>
+                                      {parte.nombre_parte || parte.nombre}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-500 block mb-2">Afección</label>
+                                <select
+                                  value={det.id_afeccion || ''}
+                                  onChange={(e) => updateEditingDetalle(detIdx, 'id_afeccion', e.target.value)}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                                >
+                                  <option value="">Seleccionar</option>
+                                  {afecciones.map((afec) => (
+                                    <option key={afec.id_afeccion} value={afec.id_afeccion}>
+                                      {afec.descripcion} {afec.especie ? `- ${afec.especie}` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-3">
+                            <div>
+                              <p className="text-xs text-slate-500 uppercase mb-1">Parte</p>
+                              <p className="text-sm font-semibold text-slate-800">{det.nombre_parte || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 uppercase mb-1">Tipo</p>
+                              <p className="text-sm text-slate-800">{det.nombre_tipo_parte || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 uppercase mb-1">Afección</p>
+                              <p className="text-sm text-slate-800">{det.afeccion || '—'}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500">Cantidad</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={det.cantidad ?? ''}
+                              onChange={(e) => updateEditingDetalle(detIdx, 'cantidad', e.target.value)}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500">Peso (kg)</label>
+                            <input
+                              type="text"
+                              value={det.peso_kg ?? ''}
+                              onChange={(e) => updateEditingDetalle(detIdx, 'peso_kg', e.target.value)}
+                              placeholder="0,0"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500">Animales afectados</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={det.animales_afectados ?? ''}
+                              onChange={(e) => updateEditingDetalle(detIdx, 'animales_afectados', e.target.value)}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500">Destino</label>
+                            <select
+                              value={det.destino_decomiso || ''}
+                              onChange={(e) => updateEditingDetalle(detIdx, 'destino_decomiso', e.target.value)}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                            >
+                              <option value="">Seleccionar</option>
+                              {destinoOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500">Observaciones</label>
+                            <input
+                              type="text"
+                              value={det.observaciones || ''}
+                              onChange={(e) => updateEditingDetalle(detIdx, 'observaciones', e.target.value)}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500">Peso (kg)</label>
-                          <input
-                            type="text"
-                            value={det.peso_kg ?? ''}
-                            onChange={(e) => updateEditingDetalle(detIdx, 'peso_kg', e.target.value)}
-                            placeholder="0,0"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500">Animales afectados</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={det.animales_afectados ?? ''}
-                            onChange={(e) => updateEditingDetalle(detIdx, 'animales_afectados', e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500">Destino</label>
-                          <select
-                            value={det.destino_decomiso || ''}
-                            onChange={(e) => updateEditingDetalle(detIdx, 'destino_decomiso', e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                          >
-                            <option value="">Seleccionar</option>
-                            {destinoOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500">Observaciones</label>
-                          <input
-                            type="text"
-                            value={det.observaciones || ''}
-                            onChange={(e) => updateEditingDetalle(detIdx, 'observaciones', e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                          />
-                        </div>
+
+                        {!det.isDeleted && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => removeEditingDetalle(detIdx)}
+                              className="text-xs text-red-600 font-semibold hover:text-red-800 transition"
+                            >
+                              ✕ Eliminar este detalle
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={addNewEditingDetalle}
+                    className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-300 transition"
+                  >
+                    ➕ Agregar detalle
+                  </button>
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import { formatDateForInput, formatDateFromDB } from '../utils/dateFormatter';
 
 /* Visual constants */
 const INPUT_BASE_CLASS =
@@ -659,9 +660,9 @@ export default function DecomisoPage() {
         
         const faena = resFaena.data;
         if (Array.isArray(faena) && faena.length > 0) {
-          // Obtener fecha raw para validación
+          // Obtener fecha raw para validación (sin problemas de timezone)
           const fechaRaw = faena[0].fecha_faena
-            ? new Date(faena[0].fecha_faena).toISOString().split('T')[0]
+            ? formatDateForInput(faena[0].fecha_faena)
             : new Date().toISOString().split('T')[0];
           
           setFechaFaenaRaw(fechaRaw);
@@ -672,7 +673,7 @@ export default function DecomisoPage() {
             n_tropa: faena[0].n_tropa,
             dte_dtu: faena[0].dte_dtu,
             fecha_faena: faena[0].fecha_faena
-              ? new Date(faena[0].fecha_faena).toLocaleDateString('es-AR')
+              ? formatDateFromDB(faena[0].fecha_faena)
               : '—',
             faenados: faena.reduce(
               (acc, f) => acc + (Number(f.faenados) || 0),
@@ -897,7 +898,7 @@ export default function DecomisoPage() {
       validationErrors.push('La fecha del decomiso es obligatoria.');
     } else if (fechaFaenaRaw && fechaDecomiso < fechaFaenaRaw) {
       validationErrors.push(
-        `La fecha del decomiso no puede ser anterior a la fecha de faena (${new Date(fechaFaenaRaw).toLocaleDateString('es-AR')}).`
+        `La fecha del decomiso no puede ser anterior a la fecha de faena (${formatDateFromDB(fechaFaenaRaw)}).`
       );
     }
 
@@ -1126,7 +1127,7 @@ export default function DecomisoPage() {
           />
           {fechaDecomiso && fechaFaenaRaw && fechaDecomiso < fechaFaenaRaw && (
             <p className="text-xs text-red-600 mt-2 font-semibold">
-              ⚠️ La fecha del decomiso no puede ser anterior a la fecha de faena ({new Date(fechaFaenaRaw).toLocaleDateString('es-AR')})
+              ⚠️ La fecha del decomiso no puede ser anterior a la fecha de faena ({formatDateFromDB(fechaFaenaRaw)})
             </p>
           )}
         </div>

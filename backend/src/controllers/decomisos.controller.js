@@ -168,7 +168,12 @@ const listarDecomisos = async (req, res) => {
         t.fecha_ingreso,
         p.nombre AS nombre_planta,
         (SELECT SUM(cantidad) FROM tropa_detalle WHERE id_tropa = t.id_tropa) AS cantidad_tropa,
-        (SELECT SUM(cantidad_faena) FROM faena_detalle WHERE id_faena = f.id_faena) AS cantidad_faena,
+        (SELECT SUM(fd_same.cantidad_faena) 
+         FROM faena_detalle fd_same
+         JOIN tropa_detalle td_same ON fd_same.id_tropa_detalle = td_same.id_tropa_detalle
+         WHERE fd_same.id_faena = f.id_faena 
+           AND td_same.id_especie = td.id_especie
+        ) AS cantidad_faena,
         dd.id_decomiso_detalle,
         dd.id_parte_decomisada,
         dd.id_afeccion,
@@ -376,9 +381,18 @@ const actualizarDecomiso = async (req, res) => {
     const decomisoResult = await client.query(
       `SELECT 
         d.fecha_decomiso,
-        fd.cantidad_faena
+        f.id_faena,
+        td.id_especie,
+        (SELECT SUM(fd_same.cantidad_faena) 
+         FROM faena_detalle fd_same
+         JOIN tropa_detalle td_same ON fd_same.id_tropa_detalle = td_same.id_tropa_detalle
+         WHERE fd_same.id_faena = f.id_faena 
+           AND td_same.id_especie = td.id_especie
+        ) AS cantidad_faena
        FROM decomiso d
        JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
+       JOIN faena f ON fd.id_faena = f.id_faena
+       JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
        WHERE d.id_decomiso = $1`,
       [id],
     );
@@ -400,18 +414,18 @@ const actualizarDecomiso = async (req, res) => {
       });
     }
 
-    // Validar que la cantidad total decomisada no supere la cantidad faenada
-    const totalDecomiso = detalles.reduce((sum, d) => {
-      const cantidad = d.cantidad !== undefined && d.cantidad !== null && String(d.cantidad).trim() !== ''
-        ? Number(String(d.cantidad).replace(',', '.'))
+    // Validar que la cantidad total de animales afectados no supere la cantidad faenada
+    const totalAnimalesAfectados = detalles.reduce((sum, d) => {
+      const animalesAfectados = d.animales_afectados !== undefined && d.animales_afectados !== null && String(d.animales_afectados).trim() !== ''
+        ? Number(String(d.animales_afectados).replace(',', '.'))
         : 0;
-      return sum + (Number.isFinite(cantidad) ? cantidad : 0);
+      return sum + (Number.isFinite(animalesAfectados) ? animalesAfectados : 0);
     }, 0);
 
-    if (totalDecomiso > cantidadFaena) {
+    if (totalAnimalesAfectados > cantidadFaena) {
       await client.query('ROLLBACK');
       return res.status(400).json({
-        error: `La cantidad total de decomiso (${totalDecomiso}) no puede superar la cantidad faenada (${cantidadFaena}).`,
+        error: `La cantidad total de animales afectados (${totalAnimalesAfectados}) no puede superar la cantidad faenada (${cantidadFaena}).`,
       });
     }
 

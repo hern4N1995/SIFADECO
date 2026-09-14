@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 /* SelectField compatible con TropaForm (react-select) */
 function SelectField({
@@ -385,7 +386,7 @@ export default function FaenasRealizadasPage() {
     );
     try {
       await api.put(`/faena/${modalModificar.data.id_faena}`, {
-        fecha_faena: modalModificar.data.fecha_faena,
+        fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
         categorias: (modalModificar.data.categorias || []).map((c) => ({
           id_tropa_detalle: c.id_tropa_detalle,
           cantidad_faena: Number(c.cantidad_faena || 0),
@@ -399,7 +400,7 @@ export default function FaenasRealizadasPage() {
           }
           return {
             ...f,
-            fecha_faena: modalModificar.data.fecha_faena,
+            fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
             total_faenado: totalModificado,
           };
         });

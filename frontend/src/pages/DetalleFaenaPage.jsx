@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import DetalleFaenaForm from '../components/DetalleFaenaForm';
+import { formatDateForAPI } from '../utils/dateFormatter';
 
 const DetableFaenaPage = () => {
   const { idTropa } = useParams();
@@ -153,7 +154,7 @@ const DetableFaenaPage = () => {
 
     const payload = {
       id_tropa: faena.id_tropa,
-      fecha_faena: datos.fecha,
+      fecha_faena: formatDateForAPI(datos.fecha),
       hora_faena: datos.hora || null,
       categorias: datos.categorias
         .filter((c) => c.cantidad > 0)

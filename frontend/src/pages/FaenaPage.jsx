@@ -157,11 +157,34 @@ const FaenaPage = () => {
   ];
   const [rowsPerPage, setRowsPerPage] = useState(20);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setRowsPerPage(window.matchMedia('(max-width: 767px)').matches ? 4 : 20);
-    }
-  }, []);
+  // Helper para obtener fecha de hoy en formato YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Validación de fecha: Verifica que sea formato YYYY-MM-DD válido con año >= 1000
+  // Evita bloquear mientras se escribe el año (ej: "0002", "0020", "0202")
+  const isValidDateString = (dateStr) => {
+    if (!dateStr || dateStr.length !== 10) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+    const [y, m, d] = dateStr.split('-').map(x => Number(x));
+    // ⚠️ CRÍTICO: Año debe ser >= 1000 (rechaza años como 0002, 0020, 0202)
+    if (y < 1000 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    return true;
+  };
+
+  // Validación de rango: Hasta no debe ser anterior a Desde
+  // Solo validar cuando ambas fechas son válidas y están completas
+  const isRangeInvalid = 
+    isValidDateString(filterDesde) && 
+    isValidDateString(filterHasta) && 
+    filterDesde > filterHasta;
 
   // Normaliza datos básicos de la tropa (lo mínimo)
   const normalizeBasic = (r) => {
@@ -399,11 +422,21 @@ const FaenaPage = () => {
   const parseDateString = (v) => {
     if (!v) return null;
     try {
-      // Si viene en formato YYYY-MM-DD (input date), crear fecha local sin hora
-      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-        const [y, m, d] = v.split('-').map((x) => Number(x));
+      let dateStr = String(v).trim();
+      
+      // Si viene en formato ISO con T (ej: "2026-09-09T00:00:00Z")
+      // CRÍTICO: Extraer SOLO YYYY-MM-DD sin crear Date object que interprete como UTC
+      if (dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];  // "2026-09-09T00:00:00Z" → "2026-09-09"
+      }
+      
+      // Si es formato YYYY-MM-DD puro, crear fecha local sin hora
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-').map((x) => Number(x));
         return new Date(y, m - 1, d);
       }
+      
+      // Fallback para otros formatos
       const d = new Date(v);
       return isNaN(d.getTime()) ? null : d;
     } catch (e) {
@@ -463,14 +496,14 @@ const FaenaPage = () => {
     const desdeMs = desdeRaw ? dateOnly(desdeRaw).getTime() : null;
     const hastaMs = hastaRaw ? dateOnly(hastaRaw).getTime() : null;
 
-    // Nuevo comportamiento: `Desde` <= (upper), `Hasta` >= (lower).
+    // Semántica estándar: `Desde` >= (lower), `Hasta` <= (upper).
     // Si ambos presentes, tomar rango inclusivo entre ambas fechas.
     let low = null;
     let high = null;
     if (filterDesde && !filterHasta) {
-      high = desdeMs; // fechas <= Desde
+      low = desdeMs; // fechas >= Desde
     } else if (!filterDesde && filterHasta) {
-      low = hastaMs; // fechas >= Hasta
+      high = hastaMs; // fechas <= Hasta
     } else if (filterDesde && filterHasta) {
       low = Math.min(desdeMs, hastaMs);
       high = Math.max(desdeMs, hastaMs);
@@ -574,54 +607,66 @@ const FaenaPage = () => {
               <div className="flex gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                 {/* Desde */}
                 <div className="w-full sm:w-40">
-                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                    Desde
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      lang="es-ES"
-                      value={filterDesde}
-                      onChange={(e) => setFilterDesde(e.target.value)}
-                      className="flex-1 sm:flex-none border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs sm:text-sm text-gray-600">
+                      Desde
+                    </label>
                     {filterDesde && (
                       <button
                         type="button"
                         onClick={() => setFilterDesde('')}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                        className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
                         title="Limpiar fecha desde"
                       >
                         Limpiar
                       </button>
                     )}
                   </div>
+                  <input
+                    type="date"
+                    lang="es-ES"
+                    value={filterDesde}
+                    onChange={(e) => setFilterDesde(e.target.value)}
+                    max={getTodayDateString()}
+                    className="w-full sm:w-40 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                  />
                 </div>
 
                 {/* Hasta */}
                 <div className="w-full sm:w-40">
-                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                    Hasta
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      lang="es-ES"
-                      value={filterHasta}
-                      onChange={(e) => setFilterHasta(e.target.value)}
-                      className="flex-1 sm:flex-none border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs sm:text-sm text-gray-600">
+                      Hasta
+                    </label>
                     {filterHasta && (
                       <button
                         type="button"
                         onClick={() => setFilterHasta('')}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                        className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
                         title="Limpiar fecha hasta"
                       >
                         Limpiar
                       </button>
                     )}
                   </div>
+                  <input
+                    type="date"
+                    lang="es-ES"
+                    value={filterHasta}
+                    onChange={(e) => setFilterHasta(e.target.value)}
+                    disabled={isRangeInvalid}
+                    max={getTodayDateString()}
+                    className={`w-full sm:w-40 border-2 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none ${
+                      isRangeInvalid
+                        ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
+                        : 'border-gray-200 bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-green-300'
+                    }`}
+                  />
+                  {isRangeInvalid && (
+                    <p className="text-red-600 text-xs mt-1 font-medium">
+                      ⚠️ "Hasta" no puede ser anterior a "Desde"
+                    </p>
+                  )}
                 </div>
               </div>
 

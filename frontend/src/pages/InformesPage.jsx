@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import Select from 'react-select';
 import api from '../services/api';
+import { getDateComponentsFromDB } from '../utils/dateFormatter';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
@@ -212,12 +213,12 @@ export default function InformesPage() {
       // Filtrar por mes, año y planta
       decomisosData = decomisosData.filter((d) => {
         try {
-          const fecha = new Date(d.fecha_faena || d.fecha);
-          if (isNaN(fecha.getTime())) return false;
+          const dateComponents = getDateComponentsFromDB(d.fecha_faena || d.fecha);
+          if (!dateComponents) return false;
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return false;
 
@@ -248,15 +249,15 @@ export default function InformesPage() {
 
       faenasData.forEach((f) => {
         try {
-          const fecha = new Date(f.fecha_faena);
-          if (isNaN(fecha.getTime())) {
+          const dateComponents = getDateComponentsFromDB(f.fecha_faena);
+          if (!dateComponents) {
             console.log('[InformesPage] Faena sin fecha válida:', f);
             return;
           }
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return;
 
@@ -267,7 +268,7 @@ export default function InformesPage() {
             if (String(plantaSeleccionada) !== String(f.id_planta)) return;
           }
 
-          const dia = String(fecha.getDate()).padStart(2, '0');
+          const dia = String(dateComponents.day).padStart(2, '0');
           const cantidad = parseInt(f.total_faenado) || 0;
 
           console.log(
@@ -295,12 +296,12 @@ export default function InformesPage() {
 
       detallesFaenaData.forEach((detalle) => {
         try {
-          const fecha = new Date(detalle.fecha_faena);
-          if (isNaN(fecha.getTime())) return;
+          const dateComponents = getDateComponentsFromDB(detalle.fecha_faena);
+          if (!dateComponents) return;
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return;
 
@@ -345,8 +346,9 @@ export default function InformesPage() {
 
       decomisosData.forEach((d) => {
         try {
-          const fecha = new Date(d.fecha_faena || d.fecha);
-          const dia = String(fecha.getDate()).padStart(2, '0');
+          const dateComponents = getDateComponentsFromDB(d.fecha_faena || d.fecha);
+          if (!dateComponents) return;
+          const dia = String(dateComponents.day).padStart(2, '0');
 
           if (!grouped[dia]) {
             grouped[dia] = {
