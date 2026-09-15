@@ -623,9 +623,21 @@ export default function FaenasADecomisar() {
             {/* Fila 1: Filtro de Fecha */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <div>
-                <label htmlFor="filterDateStart" className="block text-xs font-semibold text-slate-700 mb-2">
-                  Fecha Inicio
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="filterDateStart" className="block text-xs sm:text-sm font-semibold text-gray-600">
+                    Desde
+                  </label>
+                  {filterDateStart && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterDateStart('')}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha desde"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                   <input
                     id="filterDateStart"
                     type="date"
@@ -636,9 +648,21 @@ export default function FaenasADecomisar() {
                   />
               </div>
               <div>
-                <label htmlFor="filterDateEnd" className="block text-xs font-semibold text-slate-700 mb-2">
-                  Fecha Fin
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="filterDateEnd" className="block text-xs sm:text-sm font-semibold text-gray-600">
+                    Hasta
+                  </label>
+                  {filterDateEnd && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterDateEnd('')}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha hasta"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                   <input
                     id="filterDateEnd"
                     type="date"
@@ -654,12 +678,12 @@ export default function FaenasADecomisar() {
                   />
                   {isRangeInvalid && (
                     <p className="text-red-600 text-xs mt-1 font-medium">
-                      ⚠️ "Fecha Fin" no puede ser anterior a "Fecha Inicio"
+                      ⚠️ "Hasta" no puede ser anterior a "Desde"
                     </p>
                   )}
               </div>
               <div>
-                <label htmlFor="filterTimeStart" className="block text-xs font-semibold text-slate-700 mb-2">
+                <label htmlFor="filterTimeStart" className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                   Hora Inicio
                 </label>
                 <input
@@ -671,7 +695,7 @@ export default function FaenasADecomisar() {
                 />
               </div>
               <div>
-                <label htmlFor="filterTimeEnd" className="block text-xs font-semibold text-slate-700 mb-2">
+                <label htmlFor="filterTimeEnd" className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                   Hora Fin
                 </label>
                 <input

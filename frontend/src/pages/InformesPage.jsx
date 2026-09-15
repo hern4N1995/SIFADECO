@@ -714,9 +714,9 @@ export default function InformesPage() {
                         {Array.from(enfermedades)
                           .sort()
                           .map((enfermedad) => {
-                            // Calcular total por enfermedad
+                            // Calcular total por enfermedad y agrupar detalles
                             let totalEnfermedad = 0;
-                            const detalles = [];
+                            const detallesMap = {}; // Agrupar por "tipo - parte"
 
                             diasOrdenados.forEach((dia) => {
                               const dayData = dataByDay[dia];
@@ -729,15 +729,21 @@ export default function InformesPage() {
                                     dayData.decomisos[enfermedad][tipoParte],
                                   ).forEach(([nombreParte, cantidad]) => {
                                     totalEnfermedad += cantidad;
-                                    detalles.push({
-                                      tipo: tipoParte,
-                                      parte: nombreParte,
-                                      cantidad: cantidad,
-                                    });
+                                    const clave = `${tipoParte}|${nombreParte}`;
+                                    if (!detallesMap[clave]) {
+                                      detallesMap[clave] = {
+                                        tipo: tipoParte,
+                                        parte: nombreParte,
+                                        cantidad: 0,
+                                      };
+                                    }
+                                    detallesMap[clave].cantidad += cantidad;
                                   });
                                 });
                               }
                             });
+
+                            const detalles = Object.values(detallesMap);
 
                             return (
                               <React.Fragment key={enfermedad}>

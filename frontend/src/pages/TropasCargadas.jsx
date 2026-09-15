@@ -457,55 +457,55 @@ export default function TropasCargadas() {
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
           <div className="flex gap-3 w-full sm:w-auto flex-wrap">
             <div className="w-full sm:w-auto">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                Desde
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  lang="es-ES"
-                  placeholder="dd/mm/yyyy"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={INPUT_BASE_CLASS}
-                />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs sm:text-sm text-gray-600">
+                  Desde
+                </label>
                 {startDate && (
                   <button
                     type="button"
                     onClick={clearStartDate}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                    className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
                     title="Limpiar fecha desde"
                   >
                     Limpiar
                   </button>
                 )}
               </div>
+              <input
+                type="date"
+                lang="es-ES"
+                placeholder="dd/mm/yyyy"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={INPUT_BASE_CLASS}
+              />
             </div>
 
             <div className="w-full sm:w-auto">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                Hasta
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  lang="es-ES"
-                  placeholder="dd/mm/yyyy"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={INPUT_BASE_CLASS}
-                />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs sm:text-sm text-gray-600">
+                  Hasta
+                </label>
                 {endDate && (
                   <button
                     type="button"
                     onClick={clearEndDate}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
+                    className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
                     title="Limpiar fecha hasta"
                   >
                     Limpiar
                   </button>
                 )}
               </div>
+              <input
+                type="date"
+                lang="es-ES"
+                placeholder="dd/mm/yyyy"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className={INPUT_BASE_CLASS}
+              />
             </div>
 
             {rangeInvalid && (
@@ -736,38 +736,35 @@ export default function TropasCargadas() {
                   ← Anterior
                 </button>
 
-                {[...Array(Math.min(3, totalPages))].map((_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        currentPage === page
-                          ? 'bg-green-700 text-white shadow'
-                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-
-                {totalPages > 3 && (
-                  <>
-                    <span className="text-slate-500 text-sm">…</span>
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        currentPage === totalPages
-                          ? 'bg-green-700 text-white shadow'
-                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                      }`}
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
+                {(() => {
+                  const paginasAMostrar = new Set();
+                  paginasAMostrar.add(1);
+                  if (totalPages > 1) paginasAMostrar.add(totalPages);
+                  if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+                  paginasAMostrar.add(currentPage);
+                  if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+                  const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+                  const items = [];
+                  paginas.forEach((page, idx) => {
+                    if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                      items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+                    }
+                    items.push(
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                          currentPage === page
+                            ? 'bg-green-700 text-white shadow'
+                            : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                  return items;
+                })()}
 
                 <button
                   onClick={() =>

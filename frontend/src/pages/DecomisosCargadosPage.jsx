@@ -752,6 +752,22 @@ const DecomisosCargadosPage = () => {
 
   const renderPaginacion = () => {
     if (totalPages <= 1) return null;
+
+    // Crear un Set con las páginas a mostrar
+    const paginasAMostrar = new Set();
+
+    // Siempre agregar primera y última página
+    paginasAMostrar.add(1);
+    if (totalPages > 1) paginasAMostrar.add(totalPages);
+
+    // Agregar página actual y sus 2 vecinas (una anterior, actual, una siguiente)
+    if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+    paginasAMostrar.add(currentPage);
+    if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+
+    // Convertir a array y ordenar
+    const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+
     return (
       <>
         <div className="text-center text-xs text-slate-500 mb-2">
@@ -760,60 +776,47 @@ const DecomisosCargadosPage = () => {
         <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          disabled={currentPage === 1}
-          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-            currentPage === 1
-              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-          }`}
-        >
-          ← Anterior
-        </button>
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+              currentPage === 1
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+            }`}
+          >
+            ← Anterior
+          </button>
 
-        {[...Array(Math.min(3, totalPages))].map((_, i) => {
-          const page = i + 1;
-          return (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                currentPage === page
-                  ? 'bg-green-700 text-white shadow'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              {page}
-            </button>
-          );
-        })}
+          {paginas.map((page, idx) => (
+            <div key={page} style={{ display: 'contents' }}>
+              {/* Mostrar ellipsis si hay gap entre páginas */}
+              {idx > 0 && paginas[idx - 1] + 1 < page && (
+                <span className="text-slate-500 text-sm">…</span>
+              )}
 
-        {totalPages > 3 && (
-          <>
-            <span className="text-slate-500 text-sm">…</span>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                currentPage === totalPages
-                  ? 'bg-green-700 text-white shadow'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              {totalPages}
-            </button>
-          </>
-        )}
+              <button
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  currentPage === page
+                    ? 'bg-green-700 text-white shadow'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                {page}
+              </button>
+            </div>
+          ))}
 
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-            currentPage === totalPages
-              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-          }`}
-        >
-          Siguiente →
-        </button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+              currentPage === totalPages
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+            }`}
+          >
+            Siguiente →
+          </button>
         </div>
       </>
     );
@@ -920,19 +923,43 @@ const DecomisosCargadosPage = () => {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] items-end">
           <div className="grid gap-3 sm:grid-cols-2 items-end">
             <label className="flex flex-col text-sm text-slate-600">
-              <span className="mb-1 font-semibold">Desde</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold">Desde</span>
+                {filterDesde && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterDesde('')}
+                    className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition"
+                    title="Limpiar fecha desde"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
               <input
                 id="filterDesde"
                 type="date"
                 value={filterDesde}
                 onChange={(e) => setFilterDesde(e.target.value)}
                 max={getTodayDateString()}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-2 py-3 text-sm text-gray-700 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </label>
 
             <label className="flex flex-col text-sm text-slate-600">
-              <span className="mb-1 font-semibold">Hasta</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold">Hasta</span>
+                {filterHasta && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterHasta('')}
+                    className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition"
+                    title="Limpiar fecha hasta"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
               <input
                 id="filterHasta"
                 type="date"
@@ -940,10 +967,10 @@ const DecomisosCargadosPage = () => {
                 onChange={(e) => setFilterHasta(e.target.value)}
                 disabled={isRangeInvalid}
                 max={getTodayDateString()}
-                className={`rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all ${
+                className={`rounded-lg border-2 px-2 py-3 text-sm text-gray-700 transition-all duration-200 focus:outline-none ${
                   isRangeInvalid
                     ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
-                    : 'border-slate-300 bg-slate-50 focus:border-green-500 focus:ring-4 focus:ring-green-100'
+                    : 'border-gray-200 bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-green-300'
                 }`}
               />
               {isRangeInvalid && (
@@ -962,7 +989,7 @@ const DecomisosCargadosPage = () => {
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
                 placeholder="Ej: 123, Planta X, DTE123"
-                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </label>
 

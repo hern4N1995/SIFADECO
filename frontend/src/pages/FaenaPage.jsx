@@ -850,37 +850,35 @@ const FaenaPage = () => {
           >
             ← Anterior
           </button>
-          {[...Array(Math.min(3, totalPages))].map((_, i) => {
-            const page = i + 1;
-            return (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
-                  currentPage === page
-                    ? 'bg-green-700 text-white shadow'
-                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                }`}
-              >
-                {page}
-              </button>
-            );
-          })}
-          {totalPages > 3 && (
-            <>
-              <span className="text-slate-500 text-xs">…</span>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
-                  currentPage === totalPages
-                    ? 'bg-green-700 text-white shadow'
-                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                }`}
-              >
-                {totalPages}
-              </button>
-            </>
-          )}
+          {(() => {
+            const paginasAMostrar = new Set();
+            paginasAMostrar.add(1);
+            if (totalPages > 1) paginasAMostrar.add(totalPages);
+            if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+            paginasAMostrar.add(currentPage);
+            if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+            const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+            const items = [];
+            paginas.forEach((page, idx) => {
+              if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-xs">…</span>);
+              }
+              items.push(
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
+                    currentPage === page
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            });
+            return items;
+          })()}
           <button
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
             disabled={currentPage === totalPages}

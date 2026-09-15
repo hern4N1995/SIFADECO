@@ -148,6 +148,8 @@ export default function PlantaAdmin() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [provinciasLoading, setProvinciasLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
   // Helper: Mostrar feedback en modal
   const mostrarFeedback = (mensaje, tipo = 'info') => {
@@ -624,36 +626,47 @@ export default function PlantaAdmin() {
   /* ---------------------------
      Filtrado seguro de plantas
      --------------------------- */
-  const plantasFiltradas = plantas.filter((p) => {
-    const filtroGenLower = filtroGeneral.toLowerCase();
-    const nombre = (p.nombre || '').toString().toLowerCase();
-    const provinciaNombre =
-      (p.provincia && (p.provincia.nombre || p.provincia.label)) ||
-      p.nombre_provincia ||
-      '';
-    const provinciaStr = provinciaNombre.toString().toLowerCase();
-    const cuit = (p.cuit || '').toString();
+  const plantasFiltradas = React.useMemo(() => {
+    return plantas.filter((p) => {
+      const filtroGenLower = filtroGeneral.toLowerCase();
+      const nombre = (p.nombre || '').toString().toLowerCase();
+      const provinciaNombre =
+        (p.provincia && (p.provincia.nombre || p.provincia.label)) ||
+        p.nombre_provincia ||
+        '';
+      const provinciaStr = provinciaNombre.toString().toLowerCase();
+      const cuit = (p.cuit || '').toString();
 
-    // Filtro general busca en nombre, provincia y CUIT (solo los que comienzan con)
-    const coincideGeneral = 
-      nombre.startsWith(filtroGenLower) ||
-      provinciaStr.startsWith(filtroGenLower) ||
-      cuit.startsWith(filtroGenLower);
+      // Filtro general busca en nombre, provincia y CUIT (solo los que comienzan con)
+      const coincideGeneral = 
+        nombre.startsWith(filtroGenLower) ||
+        provinciaStr.startsWith(filtroGenLower) ||
+        cuit.startsWith(filtroGenLower);
 
-    // Filtro de fecha por rango
-    const fecha = (p.fecha_habilitacion || '').split('T')[0]; // Solo la fecha sin hora
-    const coincideFecha = (() => {
-      if (!filtroFechaDesde && !filtroFechaHasta) return true;
-      if (filtroFechaDesde && filtroFechaHasta) {
-        return fecha >= filtroFechaDesde && fecha <= filtroFechaHasta;
-      }
-      if (filtroFechaDesde) return fecha >= filtroFechaDesde;
-      if (filtroFechaHasta) return fecha <= filtroFechaHasta;
-      return true;
-    })();
+      // Filtro de fecha por rango
+      const fecha = (p.fecha_habilitacion || '').split('T')[0]; // Solo la fecha sin hora
+      const coincideFecha = (() => {
+        if (!filtroFechaDesde && !filtroFechaHasta) return true;
+        if (filtroFechaDesde && filtroFechaHasta) {
+          return fecha >= filtroFechaDesde && fecha <= filtroFechaHasta;
+        }
+        if (filtroFechaDesde) return fecha >= filtroFechaDesde;
+        if (filtroFechaHasta) return fecha <= filtroFechaHasta;
+        return true;
+      })();
 
-    return coincideGeneral && coincideFecha;
-  });
+      return coincideGeneral && coincideFecha;
+    });
+  }, [plantas, filtroGeneral, filtroFechaDesde, filtroFechaHasta]);
+
+  // Cálculo de paginación
+  const totalPages = Math.ceil(plantasFiltradas.length / rowsPerPage);
+  const paginatedPlantas = plantasFiltradas.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+
 
   /* ---------------------------
      Render (UI)
@@ -1042,7 +1055,7 @@ export default function PlantaAdmin() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {plantasFiltradas.map((p) => (
+                  {paginatedPlantas.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50 transition h-16 align-middle">
                       <td className="px-4 py-3 align-middle">{p.nombre}</td>
                       <td className="px-4 py-3 align-middle">{p.nombre_provincia || '—'}</td>
@@ -1081,6 +1094,65 @@ export default function PlantaAdmin() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Paginación */}
+          {plantasFiltradas.length > rowsPerPage && (
+            <div className="mt-8 mb-6 flex justify-center items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  currentPage === 1
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                ← Anterior
+              </button>
+
+              {(() => {
+                const paginasAMostrar = new Set();
+                paginasAMostrar.add(1);
+                if (totalPages > 1) paginasAMostrar.add(totalPages);
+                if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+                paginasAMostrar.add(currentPage);
+                if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+                const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+                const items = [];
+                paginas.forEach((page, idx) => {
+                  if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                    items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+                  }
+                  items.push(
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                        currentPage === page
+                          ? 'bg-green-700 text-white shadow'
+                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                });
+                return items;
+              })()}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  currentPage === totalPages
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                Siguiente →
+              </button>
             </div>
           )}
         </div>

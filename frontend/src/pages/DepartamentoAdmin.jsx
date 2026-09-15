@@ -126,21 +126,36 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
     currentPage < totalPages && onPageChange(currentPage + 1);
 
   const renderPages = () => {
+    const paginasAMostrar = new Set();
+    paginasAMostrar.add(1);
+    if (totalPages > 1) paginasAMostrar.add(totalPages);
+    if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+    paginasAMostrar.add(currentPage);
+    if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+    const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+
     const pages = [];
-    const start = Math.max(1, currentPage - 1);
-    const end = Math.min(totalPages, currentPage + 1);
-    for (let i = start; i <= end; i++) {
+    for (let i = 0; i < paginas.length; i++) {
+      const page = paginas[i];
+      const prev = paginas[i - 1];
+      if (i > 0 && page - prev > 1) {
+        pages.push(
+          <span key={`ellipsis-${i}`} className="text-slate-500 text-sm">
+            …
+          </span>
+        );
+      }
       pages.push(
         <button
-          key={i}
-          onClick={() => onPageChange(i)}
+          key={page}
+          onClick={() => onPageChange(page)}
           className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-            i === currentPage
+            page === currentPage
               ? 'bg-green-700 text-white shadow'
               : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
           }`}
         >
-          {i}
+          {page}
         </button>
       );
     }
