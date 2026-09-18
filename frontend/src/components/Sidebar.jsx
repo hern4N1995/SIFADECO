@@ -86,6 +86,7 @@ export default function Sidebar() {
         { to: '/admin/tipos-parte-decomisada', label: 'Tipos Decomisada' },
         { to: '/admin/especies', label: 'Especies' },
         { to: '/admin/categorias-especie', label: 'Categorías por Especie' },
+        { to: '/admin/tropas-pendientes-eliminacion', label: 'Pendientes de Eliminación', end: true },
       ],
     },
   ];

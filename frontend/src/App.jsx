@@ -38,6 +38,7 @@ import InformeFaenaPage from './pages/InformeFaenaPage.jsx';
 import InformeDecomisosPage from './pages/InformeDecomisosPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
+import TropasPendientesEliminacion from './pages/TropasPendientesEliminacion.jsx';
 
 function App() {
   useEffect(() => {
@@ -134,6 +135,16 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <AgregarUsuarioPage />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Tropas pendientes de eliminación (solo admin - rol 1) */}
+          <Route
+            path="admin/tropas-pendientes-eliminacion"
+            element={
+              <PrivateRoute allowedRoles={[1]}>
+                <TropasPendientesEliminacion />
               </PrivateRoute>
             }
           />

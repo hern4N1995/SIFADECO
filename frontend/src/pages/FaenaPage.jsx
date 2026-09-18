@@ -594,21 +594,21 @@ const FaenaPage = () => {
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-6 sm:px-4 sm:py-8 lg:px-6 overflow-x-hidden box-border">
-      <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-12">
+      <header className="mb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
           📋 Tropas a Faenar
         </h1>
 
-        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 mb-12">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between flex-wrap">
+        <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 mb-4">
+          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-end justify-between flex-wrap">
             {/* Filtros lado izquierdo */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end flex-wrap w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-end flex-wrap w-full sm:w-auto">
               {/* Fechas */}
-              <div className="flex gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+              <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                 {/* Desde */}
                 <div className="w-full sm:w-40">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs sm:text-sm text-gray-600">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-600">
                       Desde
                     </label>
                     {filterDesde && (
@@ -635,7 +635,7 @@ const FaenaPage = () => {
                 {/* Hasta */}
                 <div className="w-full sm:w-40">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs sm:text-sm text-gray-600">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-600">
                       Hasta
                     </label>
                     {filterHasta && (
@@ -671,10 +671,10 @@ const FaenaPage = () => {
               </div>
 
               {/* Búsqueda y Ordenamiento */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-start sm:items-end">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-start sm:items-end">
                 {/* Búsqueda */}
                 <div className="w-full sm:w-64">
-                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                     Buscar por tropa / DTE / productor
                   </label>
                   <div className="flex items-center gap-2">
@@ -698,9 +698,11 @@ const FaenaPage = () => {
                   </div>
                 </div>
 
-                {/* Ordenar */}
                 <div className="flex gap-2 items-end w-full sm:w-auto">
-                  <div className="flex-1 sm:flex-none sm:w-28">
+                  <div className="flex-1 sm:flex-none sm:w-30">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
+                      Ordenar por
+                    </label>
                     <SelectField
                       value={sortField ? { value: sortField, label: sortField === 'fecha' ? 'Fecha' : 'N° Tropa' } : null}
                       onChange={(sel) => setSortField(sel?.value || 'fecha')}
@@ -712,7 +714,10 @@ const FaenaPage = () => {
                       maxMenuHeight={120}
                     />
                   </div>
-                  <div className="flex-1 sm:flex-none sm:w-28">
+                  <div className="flex-1 sm:flex-none sm:w-25">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
+                      Orden
+                    </label>
                     <SelectField
                       value={sortOrder ? { value: sortOrder, label: sortOrder === 'desc' ? 'Desc' : 'Asc' } : null}
                       onChange={(sel) => setSortOrder(sel?.value || 'desc')}
@@ -724,8 +729,10 @@ const FaenaPage = () => {
                       maxMenuHeight={120}
                     />
                   </div>
-                  <div className="flex-1 sm:flex-none sm:w-32 sm:w-40">
-                    <label className="sr-only">Cant. filas</label>
+                  <div className="flex-1 sm:flex-none sm:w-25">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
+                      Cant. filas
+                    </label>
                     <SelectField
                       value={rowsPerPageOptions.find((o) => o.value === rowsPerPage) || null}
                       options={rowsPerPageOptions}

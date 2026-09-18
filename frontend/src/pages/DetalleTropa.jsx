@@ -1118,6 +1118,24 @@ export default function DetalleTropa() {
     loadCategorias();
   }, [especieSeleccionada]);
 
+  // Pre-cargar especie cuando hay detalles ya guardados en la BD
+  useEffect(() => {
+    if (detalle && detalle.categorias && detalle.categorias.length > 0) {
+      const primerDetalle = detalle.categorias[0];
+      const nombreEspecie = primerDetalle.especie;
+      
+      // Buscar la opción de especie que coincida
+      const especieOption = especiesOptions.find(
+        (opt) => String(opt.label).toLowerCase() === String(nombreEspecie).toLowerCase()
+      );
+      
+      if (especieOption && !especieSeleccionada) {
+        console.log('[DetalleTropa] Pre-cargando especie de detalles guardados:', especieOption);
+        setEspecieSeleccionada(especieOption);
+      }
+    }
+  }, [detalle, especiesOptions]);
+
   const resolveIdFromItem = (item) => {
     if (!item) return null;
     // Try several common id property names
@@ -1949,7 +1967,8 @@ export default function DetalleTropa() {
       },
     ]);
 
-    setEspecieSeleccionada(null);
+    // Mantener la especie seleccionada para siguientes agregados
+    // Solo limpiar categoría y cantidad
     setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
   }
 
@@ -2901,18 +2920,26 @@ export default function DetalleTropa() {
             Cargar Detalle por Especie
           </h2>
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-              <SelectField
-                label="Especie"
-                value={especieSeleccionada}
-                onChange={(opt) => {
-                  setEspecieSeleccionada(opt || null);
-                  setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
-                }}
-                options={especiesOptions}
-                placeholder="— Seleccionar especie —"
-                isClearable
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+              <div>
+                <SelectField
+                  label="Especie"
+                  value={especieSeleccionada}
+                  onChange={(opt) => {
+                    setEspecieSeleccionada(opt || null);
+                    setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
+                  }}
+                  options={especiesOptions}
+                  placeholder="— Seleccionar especie —"
+                  isClearable
+                  isDisabled={detalle.categorias.length > 0 || bufferRows.length > 0}
+                />
+                {(detalle.categorias.length > 0 || bufferRows.length > 0) && especieSeleccionada && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    🔒 Especie bloqueada. Elimina todos los detalles para cambiarla.
+                  </p>
+                )}
+              </div>
               <SelectField
                 label="Categoría"
                 value={
@@ -3018,6 +3045,7 @@ export default function DetalleTropa() {
                               }
                               options={especiesOptions}
                               placeholder="— Seleccionar especie —"
+                              isDisabled={bufferRows.length > 0}
                             />
                           </td>
                           <td className="px-4 py-2">
@@ -3111,6 +3139,7 @@ export default function DetalleTropa() {
                         }
                         options={especiesOptions}
                         placeholder="— Seleccionar especie —"
+                        isDisabled={bufferRows.length > 0}
                       />
                       <SelectField
                         value={
@@ -3166,20 +3195,20 @@ export default function DetalleTropa() {
                   ))}
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-green-700 text-white rounded text-sm hover:bg-green-800"
-                    onClick={saveBufferAll}
-                  >
-                    Guardar detalle agregado
-                  </button>
+                <div className="mt-4 flex gap-2 justify-between">
                   <button
                     type="button"
                     className="px-4 py-2 border rounded text-sm"
                     onClick={() => setBufferRows([])}
                   >
                     Limpiar detalle agregado
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-green-700 text-white rounded text-sm hover:bg-green-800"
+                    onClick={saveBufferAll}
+                  >
+                    Guardar detalle agregado
                   </button>
                 </div>
               </div>
@@ -3188,7 +3217,7 @@ export default function DetalleTropa() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-start">
           <button
             type="button"
             onClick={() => {

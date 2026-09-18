@@ -142,6 +142,10 @@ export default function TropasCargadas() {
   const [selectedPlanta, setSelectedPlanta] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Estado para modal de eliminación
+  const [modalEliminar, setModalEliminar] = useState(null);
+  const [motivoEliminacion, setMotivoEliminacion] = useState('');
 
   const navigate = useNavigate();
   const debounceRef = useRef(null);
@@ -389,6 +393,41 @@ export default function TropasCargadas() {
     return t.planta_nombre ?? t.planta ?? '—';
   };
 
+  // Solicitar eliminación de tropa (rol 3)
+  const handleSolicitarEliminacion = async (tropaId) => {
+    if (!tropaId) return;
+    
+    try {
+      setModalEliminar({ ...modalEliminar, loading: true, error: null });
+      
+      const response = await api.post(`/tropas-eliminacion/${tropaId}/solicitar`, {
+        motivo: motivoEliminacion,
+      });
+      
+      // Actualizar la lista de tropas
+      const updatedTropas = allTropas.map(t => 
+        t.id_tropa === tropaId 
+          ? { ...t, estado: 'pendiente_eliminacion' }
+          : t
+      );
+      setAllTropas(updatedTropas);
+      
+      // Cerrar modal
+      setModalEliminar(null);
+      setMotivoEliminacion('');
+      
+      // Mostrar alerta de éxito
+      alert('Solicitud de eliminación enviada. La tropa aparecerá marcada en amarillo hasta que un administrador la confirme.');
+    } catch (err) {
+      console.error('[TropasCargadas] Error al solicitar eliminación:', err);
+      setModalEliminar({ 
+        ...modalEliminar, 
+        loading: false, 
+        error: err.response?.data?.error || 'Error al procesar la solicitud' 
+      });
+    }
+  };
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(applyFilters, 250);
@@ -421,28 +460,54 @@ export default function TropasCargadas() {
     return tropas.slice(start, start + pageSize);
   }, [tropas, currentPage, pageSize]);
 
-  const RowActions = ({ tropa }) => (
-    <div className="flex items-center justify-center gap-2">
-      <button
-        onClick={() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
-        }}
-        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm"
-      >
-        ✏️ Modificar
-      </button>
-      <button
-        onClick={() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
-        }}
-        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"
-      >
-        📄 Resumen
-      </button>
-    </div>
-  );
+  const RowActions = ({ tropa }) => {
+    // Si no hay estado o es null, lo consideramos como 'activa'
+    const estado = tropa.estado || 'activa';
+    const canDelete = (rol === 2 || rol === 3) && estado === 'activa';
+    const isPending = estado === 'pendiente_eliminacion';
+    
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
+          }}
+          disabled={isPending}
+          className={`px-3 py-1.5 rounded-md text-sm transition ${
+            isPending 
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+              : 'bg-green-50 hover:bg-green-100 text-green-700'
+          }`}
+        >
+          ✏️ Modificar
+        </button>
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
+          }}
+          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"
+        >
+          📄 Resumen
+        </button>
+        {canDelete && (
+          <button
+            onClick={() => setModalEliminar({ tropaId: tropa.id_tropa, loading: false, error: null })}
+            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm"
+            title="Solicitar eliminación de esta tropa"
+          >
+            🗑️ Eliminar
+          </button>
+        )}
+        {isPending && (
+          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded font-semibold">
+            ⏳ Pendiente
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-8 px-3 sm:px-4 lg:px-6 box-border">
@@ -454,11 +519,11 @@ export default function TropasCargadas() {
         </div>
 
         {/* FILTROS */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between mb-6">
           <div className="flex gap-3 w-full sm:w-auto flex-wrap">
             <div className="w-full sm:w-auto">
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs sm:text-sm text-gray-600">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-600">
                   Desde
                 </label>
                 {startDate && (
@@ -484,7 +549,7 @@ export default function TropasCargadas() {
 
             <div className="w-full sm:w-auto">
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs sm:text-sm text-gray-600">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-600">
                   Hasta
                 </label>
                 {endDate && (
@@ -515,9 +580,9 @@ export default function TropasCargadas() {
             )}
           </div>
 
-          <div className="flex gap-3 w-full sm:w-1/2 items-start">
+          <div className="flex gap-3 w-full sm:w-1/2 items-end">
             <div className="flex-1 w-full">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                 Buscar por N° Tropa / DTE / productor
               </label>
               <div className="flex items-center gap-2">
@@ -538,21 +603,23 @@ export default function TropasCargadas() {
                     Limpiar
                   </button>
                 )}
-
-                <div className="w-32 sm:w-40">
-                  <label className="sr-only">Cant. filas</label>
-                  <SelectField
-                    value={selectedPageSizeOption}
-                    onChange={(sel) => {
-                      const next = sel ? Number(sel.value) : pageSize;
-                      setPageSize(next);
-                    }}
-                    options={pageSizeOptions}
-                    placeholder="Cant. filas"
-                    className=""
-                  />
-                </div>
               </div>
+            </div>
+
+            <div className="w-32 sm:w-25">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
+                Cant. filas
+              </label>
+              <SelectField
+                value={selectedPageSizeOption}
+                onChange={(sel) => {
+                  const next = sel ? Number(sel.value) : pageSize;
+                  setPageSize(next);
+                }}
+                options={pageSizeOptions}
+                placeholder="Cant. filas"
+                className=""
+              />
             </div>
           </div>
         </div>
@@ -599,34 +666,43 @@ export default function TropasCargadas() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {paginatedTropas.map((tropa, i) => (
-                      <tr
-                        key={tropa.id_tropa}
-                        className="hover:bg-green-50 transition"
-                      >
-                        <td className="px-2 sm:px-3 py-2 font-semibold text-green-700">
-                          {tropa.n_tropa}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2">
-                          {formatDateFromDB(tropa.fecha_ingreso)}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2">
-                          {plantaLabel(tropa)}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 truncate max-w-xs break-words">
-                          {tropa.productor_nombre || tropa.productor || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 truncate max-w-xs break-words">
-                          {tropa.titular || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 text-[11px] sm:text-sm text-gray-700 break-words">
-                          {tropa.dte_dtu || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 text-center">
-                          <RowActions tropa={tropa} />
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedTropas.map((tropa, i) => {
+                      const isPending = tropa.estado === 'pendiente_eliminacion';
+                      return (
+                        <tr
+                          key={tropa.id_tropa}
+                          className={`transition ${
+                            isPending
+                              ? 'bg-yellow-50 hover:bg-yellow-100 opacity-75'
+                              : 'hover:bg-green-50'
+                          }`}
+                        >
+                          <td className={`px-2 sm:px-3 py-2 font-semibold ${
+                            isPending ? 'text-yellow-700 line-through' : 'text-green-700'
+                          }`}>
+                            {tropa.n_tropa}
+                          </td>
+                          <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                            {formatDateFromDB(tropa.fecha_ingreso)}
+                          </td>
+                          <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                            {plantaLabel(tropa)}
+                          </td>
+                          <td className={`px-2 sm:px-3 py-2 truncate max-w-xs break-words ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                            {tropa.productor_nombre || tropa.productor || '—'}
+                          </td>
+                          <td className={`px-2 sm:px-3 py-2 truncate max-w-xs break-words ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                            {tropa.titular || '—'}
+                          </td>
+                          <td className={`px-2 sm:px-3 py-2 text-[11px] sm:text-sm break-words ${isPending ? 'line-through text-yellow-700' : 'text-gray-700'}`}>
+                            {tropa.dte_dtu || '—'}
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 text-center">
+                            <RowActions tropa={tropa} />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -782,6 +858,87 @@ export default function TropasCargadas() {
               </div>
             )}
           </>
+        )}
+
+        {/* Modal de eliminación */}
+        {modalEliminar && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+              {modalEliminar.loading ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-lg font-bold text-slate-800">
+                      ⚠️ Solicitar Eliminación de Tropa
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setModalEliminar(null);
+                        setMotivoEliminacion('');
+                      }}
+                      className="text-slate-400 hover:text-slate-700 text-2xl leading-none font-bold"
+                      aria-label="Cerrar"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-yellow-800 font-medium mb-2">
+                      ⚠️ <strong>Advertencia importante:</strong>
+                    </p>
+                    <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                      <li>Esto solicitará la eliminación de <strong>TODA</strong> la tropa</li>
+                      <li>Se eliminarán todas las faenas asociadas a esta tropa</li>
+                      <li>Se eliminarán todos los decomisos de esas faenas</li>
+                      <li>Un administrador debe confirmar esta acción</li>
+                      <li>Mientras se procesa, la tropa aparecerá marcada en amarillo</li>
+                    </ul>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Motivo de la solicitud (opcional)
+                    </label>
+                    <textarea
+                      value={motivoEliminacion}
+                      onChange={(e) => setMotivoEliminacion(e.target.value)}
+                      placeholder="Ej: Error en los datos, datos duplicados, etc."
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  {modalEliminar.error && (
+                    <p className="text-sm text-red-600 mb-3 font-semibold">
+                      {modalEliminar.error}
+                    </p>
+                  )}
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        setModalEliminar(null);
+                        setMotivoEliminacion('');
+                      }}
+                      className="px-5 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 font-semibold transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleSolicitarEliminacion(modalEliminar.tropaId)}
+                      className="px-5 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 font-semibold transition"
+                    >
+                      Sí, Solicitar Eliminación
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
