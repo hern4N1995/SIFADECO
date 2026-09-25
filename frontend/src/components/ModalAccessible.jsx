@@ -24,38 +24,26 @@ export default function ModalAccessible({ children, onClose }) {
 
   const modal = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4"
       aria-modal="true"
       role="dialog"
     >
       {/* Fondo oscuro */}
       <div
-        className="fixed inset-0 bg-black opacity-40"
+        className="fixed inset-0 bg-black/50"
         onClick={onClose}
-      ></div>
-
-      {/* Contenido: no limitar ancho aquí para permitir que el hijo controle max-width (ej. max-w-6xl) */}
-      {/* Capa transparente que captura clicks fuera del modal */}
-      <div className="fixed inset-0" onClick={onClose} />
+      />
 
       {/* Contenedor centrado que define el ancho del modal */}
-      <div className="w-full flex justify-center px-4">
-        <div className="relative w-full max-w-4xl lg:max-w-6xl">
-          {/* Fondo oscuro limitado al ancho del modal */}
-          <div
-            className="absolute inset-0 bg-black/40 rounded-2xl"
-            onClick={onClose}
-          />
-
-          {/* Contenido real (evitar que clicks dentro cierren) */}
-          <div
-            ref={modalRef}
-            tabIndex={-1}
-            className="relative bg-transparent focus:outline-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {children}
-          </div>
+      <div className="relative z-10 w-full max-h-[calc(100vh-1.5rem)] sm:max-h-[90vh] overflow-y-auto">
+        {/* Contenido real (evitar que clicks dentro cierren) */}
+        <div
+          ref={modalRef}
+          tabIndex={-1}
+          className="focus:outline-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import Select from 'react-select';
 import api from '../services/api';
+import { getDateComponentsFromDB } from '../utils/dateFormatter';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
@@ -193,7 +194,8 @@ export default function InformesPage() {
     try {
       // Obtener decomisos y faenas
       const decomisosRes = await api.get('/decomisos');
-      const faenasRes = await api.get('/faena/faenas-realizadas');
+      // Aumentar límite a 1000 para obtener todas las faenas del mes (máximo en la mayoría de casos)
+      const faenasRes = await api.get('/faena/faenas-realizadas', { params: { limit: 1000 } });
       const detallesRes = await api.get('/faena/detalles-categorias');
       let decomisosData = decomisosRes.data || [];
       let faenasData = faenasRes.data?.faenas || faenasRes.data || [];
@@ -212,12 +214,12 @@ export default function InformesPage() {
       // Filtrar por mes, año y planta
       decomisosData = decomisosData.filter((d) => {
         try {
-          const fecha = new Date(d.fecha_faena || d.fecha);
-          if (isNaN(fecha.getTime())) return false;
+          const dateComponents = getDateComponentsFromDB(d.fecha_faena || d.fecha);
+          if (!dateComponents) return false;
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return false;
 
@@ -248,15 +250,15 @@ export default function InformesPage() {
 
       faenasData.forEach((f) => {
         try {
-          const fecha = new Date(f.fecha_faena);
-          if (isNaN(fecha.getTime())) {
+          const dateComponents = getDateComponentsFromDB(f.fecha_faena);
+          if (!dateComponents) {
             console.log('[InformesPage] Faena sin fecha válida:', f);
             return;
           }
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return;
 
@@ -267,12 +269,11 @@ export default function InformesPage() {
             if (String(plantaSeleccionada) !== String(f.id_planta)) return;
           }
 
-          const dia = String(fecha.getDate()).padStart(2, '0');
+          const dia = String(dateComponents.day).padStart(2, '0');
           const cantidad = parseInt(f.total_faenado) || 0;
 
           console.log(
-            `[InformesPage] Faena día ${dia}: cantidad=${cantidad}, faena:`,
-            f,
+            `[InformesPage] Faena VÁLIDA día ${dia}: cantidad=${cantidad}, tropa=${f.n_tropa}, fecha=${f.fecha_faena}`,
           );
 
           if (!animalesPorDia[dia]) {
@@ -287,7 +288,7 @@ export default function InformesPage() {
         }
       });
 
-      console.log('[InformesPage] Animales por día:', animalesPorDia);
+      console.log('[InformesPage] Animales por día después de procesamiento:', animalesPorDia);
       setAnimalesFaenados(animalesPorDia);
 
       // Procesar faenas para obtener categorías por especie (dinámico)
@@ -295,12 +296,12 @@ export default function InformesPage() {
 
       detallesFaenaData.forEach((detalle) => {
         try {
-          const fecha = new Date(detalle.fecha_faena);
-          if (isNaN(fecha.getTime())) return;
+          const dateComponents = getDateComponentsFromDB(detalle.fecha_faena);
+          if (!dateComponents) return;
 
           const esMesAño =
-            fecha.getMonth() + 1 === parseInt(mes) &&
-            fecha.getFullYear() === parseInt(año);
+            dateComponents.month === parseInt(mes) &&
+            dateComponents.year === parseInt(año);
 
           if (!esMesAño) return;
 
@@ -345,8 +346,9 @@ export default function InformesPage() {
 
       decomisosData.forEach((d) => {
         try {
-          const fecha = new Date(d.fecha_faena || d.fecha);
-          const dia = String(fecha.getDate()).padStart(2, '0');
+          const dateComponents = getDateComponentsFromDB(d.fecha_faena || d.fecha);
+          if (!dateComponents) return;
+          const dia = String(dateComponents.day).padStart(2, '0');
 
           if (!grouped[dia]) {
             grouped[dia] = {
@@ -712,9 +714,9 @@ export default function InformesPage() {
                         {Array.from(enfermedades)
                           .sort()
                           .map((enfermedad) => {
-                            // Calcular total por enfermedad
+                            // Calcular total por enfermedad y agrupar detalles
                             let totalEnfermedad = 0;
-                            const detalles = [];
+                            const detallesMap = {}; // Agrupar por "tipo - parte"
 
                             diasOrdenados.forEach((dia) => {
                               const dayData = dataByDay[dia];
@@ -727,15 +729,21 @@ export default function InformesPage() {
                                     dayData.decomisos[enfermedad][tipoParte],
                                   ).forEach(([nombreParte, cantidad]) => {
                                     totalEnfermedad += cantidad;
-                                    detalles.push({
-                                      tipo: tipoParte,
-                                      parte: nombreParte,
-                                      cantidad: cantidad,
-                                    });
+                                    const clave = `${tipoParte}|${nombreParte}`;
+                                    if (!detallesMap[clave]) {
+                                      detallesMap[clave] = {
+                                        tipo: tipoParte,
+                                        parte: nombreParte,
+                                        cantidad: 0,
+                                      };
+                                    }
+                                    detallesMap[clave].cantidad += cantidad;
                                   });
                                 });
                               }
                             });
+
+                            const detalles = Object.values(detallesMap);
 
                             return (
                               <React.Fragment key={enfermedad}>
@@ -805,6 +813,19 @@ export default function InformesPage() {
                                 });
                                 return sum + totalEnfermedad;
                               }, 0)}
+                          </td>
+                        </tr>
+                        <tr className="bg-blue-100 font-bold">
+                          <td
+                            colSpan="2"
+                            className="px-2 sm:px-3 py-1 text-right text-gray-800 border border-gray-300 text-[10px] sm:text-xs"
+                          >
+                            TOTAL ANIMALES AFECTADOS
+                          </td>
+                          <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300 text-[10px] sm:text-xs">
+                            {diasOrdenados.reduce((sum, dia) => {
+                              return sum + (dataByDay[dia]?.totalAnimales || 0);
+                            }, 0)}
                           </td>
                         </tr>
                       </tfoot>

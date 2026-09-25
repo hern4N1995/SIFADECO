@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 /* SelectField compatible con react-select */
 function SelectField({
@@ -116,7 +117,7 @@ export default function FaenasADecomisar() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery('(max-width: 1023px)');
   const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 20);
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -131,6 +132,35 @@ export default function FaenasADecomisar() {
   const [filterDateEnd, setFilterDateEnd] = useState('');
   const [filterTimeStart, setFilterTimeStart] = useState('');
   const [filterTimeEnd, setFilterTimeEnd] = useState('');
+
+  // Helper para obtener fecha de hoy en formato YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Validación de fecha: Verifica que sea formato YYYY-MM-DD válido con año >= 1000
+  // Evita bloquear mientras se escribe el año (ej: "0002", "0020", "0202")
+  const isValidDateString = (dateStr) => {
+    if (!dateStr || dateStr.length !== 10) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+    const [y, m, d] = dateStr.split('-').map(x => Number(x));
+    // ⚠️ CRÍTICO: Año debe ser >= 1000 (rechaza años como 0002, 0020, 0202)
+    if (y < 1000 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    return true;
+  };
+
+  // Validación de rango: Fecha Fin no debe ser anterior a Fecha Inicio
+  // Solo validar cuando ambas fechas son válidas y están completas
+  const isRangeInvalid = 
+    isValidDateString(filterDateStart) && 
+    isValidDateString(filterDateEnd) && 
+    filterDateStart > filterDateEnd;
 
   // Obtener rol y planta del usuario desde localStorage
   useEffect(() => {
@@ -175,7 +205,11 @@ export default function FaenasADecomisar() {
       
       const conFaenados = arr.filter((f) => Number(f.total_faenado) > 0);
       const ordenadas = [...conFaenados].sort(
-        (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
+        (a, b) => {
+          const dateA = parseDateString(a.fecha_faena);
+          const dateB = parseDateString(b.fecha_faena);
+          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+        }
       );
 
       // Normalizar fecha_faena a fecha local y ms para filtros
@@ -214,7 +248,7 @@ export default function FaenasADecomisar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rol, plantaDelUsuario]);
 
-  const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
+  const formatDate = (f) => (f ? formatDateFromDB(f) : '—');
 
   const parseDateString = (v) => {
     if (!v) return null;
@@ -346,24 +380,25 @@ export default function FaenasADecomisar() {
       const hastaStartMs = hastaDate ? dateOnlyMs(hastaDate) : null;
       const hastaEndMs = hastaDate ? endOfDayMs(hastaDate) : null;
 
-      // Nuevo comportamiento:
-      // - `Desde` actúa como límite superior (<=). `Hasta` actúa como límite inferior (>=).
-      // - Si solo hay `Desde` -> fechas <= Desde.
-      // - Si solo hay `Hasta` -> fechas >= Hasta.
+      // Semántica estándar de rango de fechas:
+      // - `Desde` actúa como límite inferior (>=). `Hasta` actúa como límite superior (<=).
+      // - Si solo hay `Desde` -> fechas >= Desde.
+      // - Si solo hay `Hasta` -> fechas <= Hasta.
       // - Si hay ambos -> rango inclusivo entre las dos fechas (min..max).
       let low = null;
       let high = null;
 
       if (desdeDate && !hastaDate) {
-        high = desdeEndMs; // <= Desde
-        low = null;
-      } else if (!desdeDate && hastaDate) {
-        low = hastaStartMs; // >= Hasta
+        low = desdeStartMs; // >= Desde
         high = null;
+      } else if (!desdeDate && hastaDate) {
+        high = hastaEndMs; // <= Hasta
+        low = null;
       } else if (desdeDate && hastaDate) {
         const minDateMs = Math.min(desdeStartMs, hastaStartMs);
         const maxStartMs = Math.max(desdeStartMs, hastaStartMs);
-        const maxEndMs = endOfDayMs(new Date(maxStartMs));
+        const maxDate = new Date(maxStartMs);
+        const maxEndMs = endOfDayMs(maxDate);
         low = minDateMs;
         high = maxEndMs;
       }
@@ -494,11 +529,13 @@ export default function FaenasADecomisar() {
      ------------------------- */
   const FaenaCard = ({ f }) => (
     <div
-      className="rounded-lg shadow-sm border p-3 mb-3 bg-white border-slate-200"
+      className="rounded-lg shadow-sm border bg-white border-slate-200"
       style={{
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
+        padding: '12px',
+        marginBottom: '12px',
         wordBreak: 'break-word',
         overflowWrap: 'anywhere',
         whiteSpace: 'normal',
@@ -509,7 +546,7 @@ export default function FaenasADecomisar() {
           {formatDate(f.fecha_faena)}
         </span>
         <span className="text-sm font-semibold text-green-800">
-          Faena #{f.id_faena}
+          Tropa Nº {f.n_tropa || f.id_tropa || '—'}
         </span>
       </div>
       <div className="text-sm text-slate-700 space-y-1">
@@ -574,45 +611,79 @@ export default function FaenasADecomisar() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-6 sm:px-6 sm:py-8 lg:px-8 box-border pb-24 overflow-x-hidden">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center drop-shadow mb-6">
           🩺 Faenas a Decomisar
         </h1>
 
         {/* Controles: Filtros de Fecha y Hora + Selector de Filas */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-6">
           <div className="max-w-5xl mx-auto space-y-4">
             {/* Fila 1: Filtro de Fecha */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <div>
-                <label htmlFor="filterDateStart" className="block text-xs font-semibold text-slate-700 mb-2">
-                  Fecha Inicio
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="filterDateStart" className="block text-xs sm:text-sm font-semibold text-gray-600">
+                    Desde
+                  </label>
+                  {filterDateStart && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterDateStart('')}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha desde"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                   <input
                     id="filterDateStart"
                     type="date"
                     value={filterDateStart}
                     onChange={(e) => setFilterDateStart(e.target.value)}
-                    onInput={(e) => setFilterDateStart(e.target.value)}
+                    max={getTodayDateString()}
                     className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                   />
               </div>
               <div>
-                <label htmlFor="filterDateEnd" className="block text-xs font-semibold text-slate-700 mb-2">
-                  Fecha Fin
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="filterDateEnd" className="block text-xs sm:text-sm font-semibold text-gray-600">
+                    Hasta
+                  </label>
+                  {filterDateEnd && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterDateEnd('')}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha hasta"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                   <input
                     id="filterDateEnd"
                     type="date"
                     value={filterDateEnd}
                     onChange={(e) => setFilterDateEnd(e.target.value)}
-                    onInput={(e) => setFilterDateEnd(e.target.value)}
-                    className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                    disabled={isRangeInvalid}
+                    max={getTodayDateString()}
+                    className={`w-full px-2 py-3 border-2 rounded-lg text-sm transition-all duration-200 focus:outline-none ${
+                      isRangeInvalid
+                        ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
+                        : 'border-gray-200 bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-green-300'
+                    }`}
                   />
+                  {isRangeInvalid && (
+                    <p className="text-red-600 text-xs mt-1 font-medium">
+                      ⚠️ "Hasta" no puede ser anterior a "Desde"
+                    </p>
+                  )}
               </div>
               <div>
-                <label htmlFor="filterTimeStart" className="block text-xs font-semibold text-slate-700 mb-2">
+                <label htmlFor="filterTimeStart" className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                   Hora Inicio
                 </label>
                 <input
@@ -624,7 +695,7 @@ export default function FaenasADecomisar() {
                 />
               </div>
               <div>
-                <label htmlFor="filterTimeEnd" className="block text-xs font-semibold text-slate-700 mb-2">
+                <label htmlFor="filterTimeEnd" className="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">
                   Hora Fin
                 </label>
                 <input
@@ -638,11 +709,11 @@ export default function FaenasADecomisar() {
             </div>
 
             {/* Fila 2: Filtro por Día Relativo + Selector de Filas */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-4 border-t border-slate-200">
               {/* Filtros de Día */}
-              <div className="flex items-center gap-4 justify-center flex-wrap">
-                <div className="flex items-center gap-2 select-none">
-                  <span className="text-sm text-slate-700">Actual</span>
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 sm:justify-center sm:flex-wrap">
+                <div className="flex items-center gap-2 select-none min-w-0">
+                  <span className="text-xs sm:text-sm text-slate-700">Actual</span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -682,11 +753,11 @@ export default function FaenasADecomisar() {
                 </div>
 
                 <div
-                  className={`flex items-center gap-2 select-none ${
+                  className={`flex items-center gap-2 select-none min-w-0 ${
                     !previousDate ? 'opacity-50' : ''
                   }`}
                 >
-                  <span className="text-sm text-slate-700">Anterior</span>
+                  <span className="text-xs sm:text-sm text-slate-700">Anterior</span>
                   <span
                     role="button"
                     tabIndex={previousDate ? 0 : -1}
@@ -731,11 +802,11 @@ export default function FaenasADecomisar() {
                 </div>
 
                 <div
-                  className={`flex items-center gap-2 select-none ${
+                  className={`flex items-center gap-2 select-none min-w-0 ${
                     !nextDate ? 'opacity-50' : ''
                   }`}
                 >
-                  <span className="text-sm text-slate-700">Siguiente</span>
+                  <span className="text-xs sm:text-sm text-slate-700">Siguiente</span>
                   <span
                     role="button"
                     tabIndex={nextDate ? 0 : -1}
@@ -779,8 +850,8 @@ export default function FaenasADecomisar() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 select-none">
-                  <span className="text-sm text-slate-700">Todas</span>
+                <div className="flex items-center gap-2 select-none min-w-0">
+                  <span className="text-xs sm:text-sm text-slate-700">Todas</span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -821,7 +892,7 @@ export default function FaenasADecomisar() {
               </div>
 
               {/* Selector de Filas */}
-              <div style={{ minWidth: 0 }} className="col-span-0.75 max-w-[90px]">
+              <div style={{ minWidth: 0 }} className="w-full sm:w-[90px] sm:self-center">
                 <SelectField
                   label="Filas"
                   value={
@@ -867,18 +938,18 @@ export default function FaenasADecomisar() {
         <>
           {isMobile ? (
             <div
-              className="max-w-full mx-auto px-3"
-              style={{ boxSizing: 'border-box' }}
+              className="w-full"
+              style={{ boxSizing: 'border-box', padding: '0 12px' }}
             >
               {paginatedFaenas.map((f) => (
                 <FaenaCard key={f.id_faena} f={f} />
               ))}
             </div>
           ) : (
-            <div className="flex justify-center">
-              <div className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 max-w-full">
+            <div className="w-full max-w-full">
+              <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table
-                  className="w-full text-sm text-center text-slate-700"
+                  className="w-full min-w-[1100px] text-sm text-center text-slate-700"
                   style={{ tableLayout: 'auto' }}
                 >
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
@@ -1001,10 +1072,10 @@ export default function FaenasADecomisar() {
 
       {/* Modal Preview */}
       {previewOpen && previewFaena && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-1.5rem)] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+            <div className="flex justify-between items-start gap-3 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 break-words">
                 📋 Vista Previa - Faena #{previewFaena.id_faena}
               </h2>
               <button
@@ -1024,7 +1095,7 @@ export default function FaenasADecomisar() {
               <div className="bg-slate-50 rounded-lg p-4">
                 <p className="text-xs text-slate-600 font-semibold">Fecha Faena</p>
                 <p className="text-lg font-bold text-slate-800">
-                  {previewFaena.fecha_faena ? new Date(previewFaena.fecha_faena).toLocaleDateString('es-AR') : '—'}
+                  {previewFaena.fecha_faena ? formatDateFromDB(previewFaena.fecha_faena) : '—'}
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-4">

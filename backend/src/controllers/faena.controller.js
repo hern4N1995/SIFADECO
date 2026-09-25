@@ -1,6 +1,6 @@
 const pool = require('../db');
 
-const EDICION_FAENA_VENTANA_HORAS = 48;
+const EDICION_FAENA_VENTANA_HORAS = 120;
 const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
 
 // Obtener tropas con remanente para faenar

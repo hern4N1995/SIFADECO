@@ -133,6 +133,8 @@ export default function VeterinariosPage() {
   const feedbackTimeoutRef = useRef(null);
   const [confirmAction, setConfirmAction] = useState({ open: false, vet: null, nuevoEstado: null });
   const [filtro, setFiltro] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
   const [esMovil, setEsMovil] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
@@ -217,6 +219,43 @@ export default function VeterinariosPage() {
       return;
     }
 
+    // Validar matrícula duplicada
+    const matriculaExistente = veterinarios.some((v) => {
+      const vId = v.id_veterinario || v.id;
+      return v.matricula === form.matricula && vId !== editandoId;
+    });
+
+    if (matriculaExistente) {
+      mostrarFeedback('❌ Esta matrícula ya está registrada', 'error');
+      return;
+    }
+
+    // Validar email duplicado (si se proporciona)
+    if (form.email?.trim()) {
+      const emailExistente = veterinarios.some((v) => {
+        const vId = v.id_veterinario || v.id;
+        return v.email && v.email.toLowerCase() === form.email.toLowerCase() && vId !== editandoId;
+      });
+
+      if (emailExistente) {
+        mostrarFeedback('❌ Este email ya está registrado', 'error');
+        return;
+      }
+    }
+
+    // Validar DNI duplicado (si se proporciona)
+    if (form.dni?.trim()) {
+      const dniExistente = veterinarios.some((v) => {
+        const vId = v.id_veterinario || v.id;
+        return v.dni && v.dni === form.dni && vId !== editandoId;
+      });
+
+      if (dniExistente) {
+        mostrarFeedback('❌ Este DNI ya está registrado', 'error');
+        return;
+      }
+    }
+
     try {
       if (editandoId) {
         await api.put(`/veterinarios/${editandoId}`, form);
@@ -286,20 +325,30 @@ export default function VeterinariosPage() {
 
   const eliminarVeterinario = (v) => solicitarCambioEstado(v, 'Inactivo');
 
-  const veterinariosFiltrados = veterinarios.filter((v) => {
-    const texto = filtro.toLowerCase();
-    return (
-      (v.nombre || '').toLowerCase().includes(texto) ||
-      (v.apellido || '').toLowerCase().includes(texto) ||
-      String(v.matricula || '')
-        .toLowerCase()
-        .includes(texto) ||
-      String(v.dni || '')
-        .toLowerCase()
-        .includes(texto)
-    );
-  });
+  const veterinariosFiltrados = React.useMemo(() => {
+    return veterinarios.filter((v) => {
+      const texto = filtro.toLowerCase();
+      return (
+        (v.nombre || '').toLowerCase().includes(texto) ||
+        (v.apellido || '').toLowerCase().includes(texto) ||
+        String(v.matricula || '')
+          .toLowerCase()
+          .includes(texto) ||
+        String(v.dni || '')
+          .toLowerCase()
+          .includes(texto)
+      );
+    });
+  }, [veterinarios, filtro]);
 
+  // Cálculo de paginación
+  const totalPages = Math.ceil(veterinariosFiltrados.length / rowsPerPage);
+  const paginatedVeterinarios = veterinariosFiltrados.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  // Función para renderizar paginación mejorada
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
@@ -506,7 +555,7 @@ export default function VeterinariosPage() {
                 className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
               {veterinariosFiltrados.length > 0 ? (
-                veterinariosFiltrados.map((v) => (
+                paginatedVeterinarios.map((v) => (
                   <div
                     key={v.id_veterinario || v.id}
                     className="bg-gray-50 p-4 rounded-xl shadow border border-gray-200"
@@ -589,7 +638,7 @@ export default function VeterinariosPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {veterinariosFiltrados.map((v) => (
+                    {paginatedVeterinarios.map((v) => (
                       <tr
                         key={v.id_veterinario || v.id}
                         className="hover:bg-gray-50 transition"
@@ -635,6 +684,65 @@ export default function VeterinariosPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* Paginación */}
+          {veterinariosFiltrados.length > rowsPerPage && (
+            <div className="mt-8 mb-6 flex justify-center items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  currentPage === 1
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                ← Anterior
+              </button>
+
+              {(() => {
+                const paginasAMostrar = new Set();
+                paginasAMostrar.add(1);
+                if (totalPages > 1) paginasAMostrar.add(totalPages);
+                if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+                paginasAMostrar.add(currentPage);
+                if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+                const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+                const items = [];
+                paginas.forEach((page, idx) => {
+                  if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                    items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+                  }
+                  items.push(
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                        currentPage === page
+                          ? 'bg-green-700 text-white shadow'
+                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                });
+                return items;
+              })()}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  currentPage === totalPages
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                Siguiente →
+              </button>
             </div>
           )}
         </div>

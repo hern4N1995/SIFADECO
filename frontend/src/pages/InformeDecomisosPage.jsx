@@ -18,6 +18,7 @@ import {
   Cell,
 } from 'recharts';
 import api from '../services/api';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
@@ -140,6 +141,7 @@ export default function InormeDecomisosPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isPrintMode, setIsPrintMode] = useState(false);
   const itemsPerPage = 20;
 
   // Métricas agregadas
@@ -426,10 +428,12 @@ export default function InormeDecomisosPage() {
   }, [decomisos]);
 
   const totalPages = Math.max(1, Math.ceil(sortedDecomisos.length / itemsPerPage));
-  const paginatedDecomisos = sortedDecomisos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const paginatedDecomisos = isPrintMode 
+    ? sortedDecomisos 
+    : sortedDecomisos.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
+      );
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -439,7 +443,7 @@ export default function InormeDecomisosPage() {
 
   return (
     <div className="bg-gray-50 min-h-full">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 no-print">
           <button
@@ -450,7 +454,7 @@ export default function InormeDecomisosPage() {
           >
             <HiArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+          <h1 className="min-w-0 px-2 text-center text-xl sm:text-3xl lg:text-4xl font-bold text-gray-900 break-words">
             📊 Informe de Decomisos
           </h1>
           <div className="w-10"></div>
@@ -458,7 +462,7 @@ export default function InormeDecomisosPage() {
 
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 no-print">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {/* Fechas */}
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">Desde</label>
@@ -575,7 +579,7 @@ export default function InormeDecomisosPage() {
             )}
 
             {/* Botones */}
-            <div className="flex items-end gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:col-span-2 lg:col-span-1">
               <button
                 onClick={fetchData}
                 className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium shadow-sm h-12"
@@ -594,13 +598,24 @@ export default function InormeDecomisosPage() {
         </div>
 
         {/* Main card */}
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 sm:p-6">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 sm:p-6 min-w-0">
           {/* Botón impresión */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-end items-end gap-2 sm:gap-3 md:gap-4 no-print mb-4">
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                // Activar modo impresión para mostrar todos los datos
+                setIsPrintMode(true);
+                // Esperar a que React renderice todos los datos
+                setTimeout(() => {
+                  window.print();
+                  // Desactivar modo impresión después de que se cierre el diálogo de impresión
+                  setTimeout(() => {
+                    setIsPrintMode(false);
+                  }, 500);
+                }, 100);
+              }}
               className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-xs sm:text-sm print:hidden whitespace-nowrap"
-              title="Imprimir informe"
+              title="Imprimir informe (con todos los datos)"
             >
               <svg
                 className="w-4 h-4"
@@ -621,7 +636,7 @@ export default function InormeDecomisosPage() {
 
           {/* Título */}
           <div className="px-4 sm:px-6 py-6 border-b border-gray-200">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 text-center break-words">
               Informe de Decomisos
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
@@ -669,7 +684,7 @@ export default function InormeDecomisosPage() {
           {/* Gráficos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Tendencia temporal */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 min-w-0">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold text-gray-900">
                   Tendencia mensual
@@ -724,7 +739,7 @@ export default function InormeDecomisosPage() {
             </div>
 
             {/* Destino decomiso (Pie) */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 min-w-0">
               <h3 className="text-base font-semibold text-gray-900 mb-3">
                 Decomisos por destino
               </h3>
@@ -756,7 +771,7 @@ export default function InormeDecomisosPage() {
           </div>
 
           {/* Peso por afección (Bar) */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+          <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 mb-4 min-w-0">
             <h3 className="text-base font-semibold text-gray-900 mb-3">
               Peso decomisado por afección (Top 8)
             </h3>
@@ -789,7 +804,7 @@ export default function InormeDecomisosPage() {
           </div>
 
           {/* Tabla por planta */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+          <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 mb-4 min-w-0">
             <h3 className="text-base font-semibold mb-3 text-gray-900">
               Decomisos por planta
             </h3>
@@ -818,12 +833,53 @@ export default function InormeDecomisosPage() {
           </div>
 
           {/* Tabla detallada de decomisos */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
-            <h3 className="text-base font-semibold mb-3 text-gray-900">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 print:bg-white print:border-0 print:rounded-none print:p-0">
+            <h3 className="text-base font-semibold mb-3 text-gray-900 print:hidden">
               Detalle de decomisos
             </h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-xs sm:text-sm">
+            <div className={`grid gap-3 lg:hidden ${isPrintMode ? 'hidden' : 'print:hidden'}`}>
+              {paginatedDecomisos.map((d, idx) => (
+                <article
+                  key={`${currentPage}-${idx}`}
+                  className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-green-800 break-words">Tropa {d.n_tropa || '-'}</p>
+                      <p className="text-xs text-gray-600 break-words">{d.nombre_planta || '-'}</p>
+                    </div>
+                    <time className="shrink-0 text-xs font-medium text-gray-700">
+                      {formatDateFromDB(d.fecha_decomiso || d.fecha_ingreso) || '-'}
+                    </time>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
+                    <div className="col-span-2 min-w-0">
+                      <dt className="text-xs text-gray-500">Afección</dt>
+                      <dd className="font-medium break-words">{d.afeccion || '-'}</dd>
+                      {d.especie && <dd className="text-xs text-gray-600 break-words">{d.especie}</dd>}
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-500">Cantidad</dt>
+                      <dd className="font-medium">{d.cantidad || 0}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-500">Peso (kg)</dt>
+                      <dd className="font-medium">{Number(d.peso_kg || 0).toFixed(2)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-500">Animales</dt>
+                      <dd className="font-medium">{d.animales_afectados || 0}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-xs text-gray-500">Destino</dt>
+                      <dd className="font-medium break-words">{d.destino_decomiso || '-'}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto lg:block print:block">
+              <table className="min-w-[900px] w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs text-gray-500 uppercase tracking-wide">
                     <th className="py-2 px-2 sm:px-4">Fecha</th>
@@ -840,7 +896,7 @@ export default function InormeDecomisosPage() {
                   {paginatedDecomisos.map((d, idx) => (
                     <tr key={`${currentPage}-${idx}`} className="border-t border-gray-200 hover:bg-gray-100">
                       <td className="py-2 px-2 sm:px-4">
-                        {new Date(d.fecha_decomiso || d.fecha_ingreso || 0).toLocaleDateString('es-AR')}
+                        {formatDateFromDB(d.fecha_decomiso || d.fecha_ingreso) || '-'}
                       </td>
                       <td className="py-2 px-2 sm:px-4">{d.n_tropa || '-'}</td>
                       <td className="py-2 px-2 sm:px-4">{d.nombre_planta || '-'}</td>
@@ -858,11 +914,12 @@ export default function InormeDecomisosPage() {
                   ))}
                 </tbody>
               </table>
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-3">
-                <p className="text-xs text-gray-600">
-                  Mostrando {paginatedDecomisos.length} de {sortedDecomisos.length} decomisos
-                </p>
-                <div className="flex items-center gap-2">
+            </div>
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 mt-3 no-print ${isPrintMode ? 'hidden' : ''}`}>
+              <p className="text-xs text-gray-600">
+                Mostrando {paginatedDecomisos.length} de {sortedDecomisos.length} decomisos
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
@@ -882,7 +939,6 @@ export default function InormeDecomisosPage() {
                   >
                     Siguiente
                   </button>
-                </div>
               </div>
             </div>
           </div>
@@ -900,15 +956,16 @@ export default function InormeDecomisosPage() {
       <style>{`
         @page {
           size: A4;
-          margin: 0;
+          margin: 15mm;
           padding: 0;
-          margin-top: 0;
-          margin-bottom: 0;
-          margin-left: 0;
-          margin-right: 0;
         }
 
         @media print {
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           .no-print {
             display: none !important;
           }
@@ -942,8 +999,10 @@ export default function InormeDecomisosPage() {
 
           .bg-gray-50 {
             background-color: white !important;
-            margin: 10mm 10mm 0 10mm !important;
+            margin: 0 !important;
             padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
           }
 
           .max-w-6xl {
@@ -957,18 +1016,32 @@ export default function InormeDecomisosPage() {
             border: none !important;
             margin: 0 !important;
             padding: 0 !important;
+            border-radius: 0 !important;
           }
 
           h1 {
             margin-top: 0 !important;
-            margin-bottom: 10mm !important;
+            margin-bottom: 8mm !important;
+            page-break-after: avoid !important;
+          }
+
+          h2 {
+            margin-top: 5mm !important;
+            margin-bottom: 4mm !important;
             page-break-after: avoid !important;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
+            page-break-inside: auto;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          tr {
             page-break-inside: avoid;
+            page-break-after: auto;
           }
 
           th,

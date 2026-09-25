@@ -198,6 +198,8 @@ export default function EspecieAdmin() {
     action: 'confirm',
     onConfirm: null,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
@@ -240,6 +242,24 @@ export default function EspecieAdmin() {
         type: 'error',
         title: 'Error',
         message: '❌ La descripción es obligatoria',
+        onConfirm: () => setModal({ ...modal, isOpen: false }),
+      });
+      return;
+    }
+
+    // Validar duplicado (normalizar comparación)
+    const descNorm = form.descripcion.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const existeDuplicado = especies.some((e) => {
+      const eDescNorm = (e.descripcion || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return eDescNorm === descNorm && e.id_especie !== editandoId;
+    });
+
+    if (existeDuplicado) {
+      setModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error',
+        message: '❌ Esta especie ya existe',
         onConfirm: () => setModal({ ...modal, isOpen: false }),
       });
       return;
@@ -348,10 +368,20 @@ export default function EspecieAdmin() {
     });
   };
 
-  const especiesFiltradas = especies.filter((e) =>
-    (e.descripcion || '').toLowerCase().includes(filtro.toLowerCase())
+  const especiesFiltradas = React.useMemo(() => {
+    return especies.filter((e) =>
+      (e.descripcion || '').toLowerCase().includes(filtro.toLowerCase())
+    );
+  }, [especies, filtro]);
+
+  // Cálculo de paginación
+  const totalPages = Math.ceil(especiesFiltradas.length / rowsPerPage);
+  const paginatedEspecies = especiesFiltradas.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
   );
 
+  // Función para renderizar paginación mejorada
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -438,7 +468,7 @@ export default function EspecieAdmin() {
                   className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
                 />
                 {especiesFiltradas.length > 0 ? (
-                  especiesFiltradas.map((e) => (
+                  paginatedEspecies.map((e) => (
                     <div
                       key={e.id_especie}
                       className="bg-gray-50 p-2 sm:p-4 rounded-xl shadow border border-gray-200"
@@ -499,7 +529,7 @@ export default function EspecieAdmin() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {especiesFiltradas.map((e) => (
+                      {paginatedEspecies.map((e) => (
                         <tr
                           key={e.id_especie}
                           className="hover:bg-gray-50 transition"
@@ -534,6 +564,65 @@ export default function EspecieAdmin() {
                     No se encontraron especies.
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Paginación */}
+            {especiesFiltradas.length > rowsPerPage && (
+              <div className="mt-8 mb-6 flex justify-center items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    currentPage === 1
+                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  ← Anterior
+                </button>
+
+                {(() => {
+                  const paginasAMostrar = new Set();
+                  paginasAMostrar.add(1);
+                  if (totalPages > 1) paginasAMostrar.add(totalPages);
+                  if (currentPage > 1) paginasAMostrar.add(currentPage - 1);
+                  paginasAMostrar.add(currentPage);
+                  if (currentPage < totalPages) paginasAMostrar.add(currentPage + 1);
+                  const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+                  const items = [];
+                  paginas.forEach((page, idx) => {
+                    if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                      items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+                    }
+                    items.push(
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                          currentPage === page
+                            ? 'bg-green-700 text-white shadow'
+                            : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                  return items;
+                })()}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    currentPage === totalPages
+                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  Siguiente →
+                </button>
               </div>
             )}
           </div>

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 /* SelectField compatible con TropaForm (react-select) */
 function SelectField({
@@ -106,7 +108,7 @@ const useMediaQuery = (query) => {
   return matches;
 };
 
-const EDICION_FAENA_VENTANA_HORAS = 48;
+const EDICION_FAENA_VENTANA_HORAS = 120;
 const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
 
 export default function FaenasRealizadasPage() {
@@ -120,6 +122,7 @@ export default function FaenasRealizadasPage() {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  const navigate = useNavigate();
 
   const rowsPerPageOptions = [4, 7, 10, 20];
   const sortOptions = [
@@ -296,11 +299,11 @@ export default function FaenasRealizadasPage() {
   };
 
   const handleDecomisar = (event, id_faena) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const targetPath = `/decomisos/nuevo/${id_faena}`;
-    window.open(targetPath, '_blank', 'noopener,noreferrer');
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    navigate(`/decomisos/nuevo/${id_faena}`);
   };
 
   const handleVerDetalle = async (id_faena) => {
@@ -383,7 +386,7 @@ export default function FaenasRealizadasPage() {
     );
     try {
       await api.put(`/faena/${modalModificar.data.id_faena}`, {
-        fecha_faena: modalModificar.data.fecha_faena,
+        fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
         categorias: (modalModificar.data.categorias || []).map((c) => ({
           id_tropa_detalle: c.id_tropa_detalle,
           cantidad_faena: Number(c.cantidad_faena || 0),
@@ -397,7 +400,7 @@ export default function FaenasRealizadasPage() {
           }
           return {
             ...f,
-            fecha_faena: modalModificar.data.fecha_faena,
+            fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
             total_faenado: totalModificado,
           };
         });
@@ -537,9 +540,21 @@ export default function FaenasRealizadasPage() {
           <div className="w-full max-w-7xl">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 items-end">
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-slate-700 mb-1">
-                  Desde
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Desde
+                  </label>
+                  {filtro.desde && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltro((s) => ({ ...s, desde: '' }))}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha desde"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                 <input
                   type="date"
                   value={filtro.desde}
@@ -552,9 +567,21 @@ export default function FaenasRealizadasPage() {
               </div>
 
               <div className="flex flex-col">
-                <label className="text-sm font-semibold text-slate-700 mb-1">
-                  Hasta
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Hasta
+                  </label>
+                  {filtro.hasta && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltro((s) => ({ ...s, hasta: '' }))}
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 hover:underline transition"
+                      title="Limpiar fecha hasta"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
                 <input
                   type="date"
                   value={filtro.hasta}
@@ -594,17 +621,19 @@ export default function FaenasRealizadasPage() {
               </div>
 
               <div style={{ minWidth: 0 }} className="col-span-1">
-                <div className="flex flex-col">
-                  <label className="text-sm font-semibold text-slate-700 mb-1">Ordenar por</label>
-                  <select
-                    value={sortField}
-                    onChange={(e) => setSortField(e.target.value)}
-                    className="w-full rounded-lg border-2 border-gray-200 px-2 py-3 text-sm bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
-                  >
-                    <option value="fecha">Fecha</option>
-                    <option value="n_tropa">N° Tropa</option>
-                  </select>
-                </div>
+                <SelectField
+                  label="Ordenar por"
+                  value={
+                    sortField ? { value: sortField, label: sortField === 'fecha' ? 'Fecha' : 'N° Tropa' } : null
+                  }
+                  options={[
+                    { value: 'fecha', label: 'Fecha' },
+                    { value: 'n_tropa', label: 'N° Tropa' },
+                  ]}
+                  onChange={(sel) => setSortField(sel?.value || 'fecha')}
+                  className={isMobile ? '' : 'w-full'}
+                  placeholder="Ordenar por"
+                />
               </div>
 
               <div style={{ minWidth: 0 }} className="col-span-1">

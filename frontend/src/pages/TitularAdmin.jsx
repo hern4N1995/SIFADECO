@@ -224,6 +224,20 @@ export default function TitularAdmin() {
       return;
     }
 
+    // Validar CUIT duplicado
+    if (nuevoTitular.cuit) {
+      const cuitNormalizado = normalizarCuit(nuevoTitular.cuit);
+      const existeDuplicado = titulares.some((t) => {
+        const cuitExistente = normalizarCuit(String(t.cuit || t.documento || ''));
+        return cuitExistente === cuitNormalizado;
+      });
+
+      if (existeDuplicado) {
+        mostrarFeedback('❌ Este CUIT ya está registrado.', 'error');
+        return;
+      }
+    }
+
     try {
       const payload = {
         nombre: nuevoTitular.nombre,
@@ -807,38 +821,35 @@ export default function TitularAdmin() {
               ← Anterior
             </button>
 
-            {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
-              const page = i + 1;
-              return (
-                <button
-                  key={page}
-                  onClick={() => irPagina(page)}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    paginaActual === page
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
-
-            {totalPaginas > 3 && (
-              <>
-                <span className="text-slate-500 text-sm">…</span>
-                <button
-                  onClick={() => irPagina(totalPaginas)}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    paginaActual === totalPaginas
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  {totalPaginas}
-                </button>
-              </>
-            )}
+            {(() => {
+              const paginasAMostrar = new Set();
+              paginasAMostrar.add(1);
+              if (totalPaginas > 1) paginasAMostrar.add(totalPaginas);
+              if (paginaActual > 1) paginasAMostrar.add(paginaActual - 1);
+              paginasAMostrar.add(paginaActual);
+              if (paginaActual < totalPaginas) paginasAMostrar.add(paginaActual + 1);
+              const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+              const items = [];
+              paginas.forEach((page, idx) => {
+                if (idx > 0 && paginas[idx - 1] + 1 < page) {
+                  items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+                }
+                items.push(
+                  <button
+                    key={page}
+                    onClick={() => irPagina(page)}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                      paginaActual === page
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+              return items;
+            })()}
 
             <button
               onClick={paginaSiguiente}

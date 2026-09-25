@@ -113,6 +113,17 @@ export default function ProductorAdmin() {
       return;
     }
 
+    // Validar que el CUIT no esté duplicado
+    const existeDuplicado = productores.some((p) => {
+      const cuitExistente = normalizarCuit(String(p.cuit || ''));
+      return cuitExistente === cuitDigitos;
+    });
+
+    if (existeDuplicado) {
+      setError('❌ Este CUIT ya está registrado.');
+      return;
+    }
+
     try {
       const res = await api.post('/productores', {
         cuit: cuitDigitos, // Guardar solo números
@@ -237,6 +248,14 @@ export default function ProductorAdmin() {
   const renderPaginacion = () => {
     if (totalPaginas <= 1) return null;
 
+    const paginasAMostrar = new Set();
+    paginasAMostrar.add(1);
+    if (totalPaginas > 1) paginasAMostrar.add(totalPaginas);
+    if (paginaActual > 1) paginasAMostrar.add(paginaActual - 1);
+    paginasAMostrar.add(paginaActual);
+    if (paginaActual < totalPaginas) paginasAMostrar.add(paginaActual + 1);
+    const paginas = Array.from(paginasAMostrar).sort((a, b) => a - b);
+
     return (
       <div className="mt-[-4px] flex justify-center items-center gap-2 flex-wrap">
         <button
@@ -251,9 +270,12 @@ export default function ProductorAdmin() {
           ← Anterior
         </button>
 
-        {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
-          const page = i + 1;
-          return (
+        {paginas.map((page, idx) => {
+          const items = [];
+          if (idx > 0 && paginas[idx - 1] + 1 < page) {
+            items.push(<span key={`ellipsis-${idx}`} className="text-slate-500 text-sm">…</span>);
+          }
+          items.push(
             <button
               key={page}
               onClick={() => irPagina(page)}
@@ -266,23 +288,8 @@ export default function ProductorAdmin() {
               {page}
             </button>
           );
-        })}
-
-        {totalPaginas > 3 && (
-          <>
-            <span className="text-slate-500 text-sm">…</span>
-            <button
-              onClick={() => irPagina(totalPaginas)}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                paginaActual === totalPaginas
-                  ? 'bg-green-700 text-white shadow'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              {totalPaginas}
-            </button>
-          </>
-        )}
+          return items;
+        }).flat()}
 
         <button
           onClick={paginaSiguiente}

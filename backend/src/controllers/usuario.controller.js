@@ -250,8 +250,8 @@ const getPerfil = async (req, res) => {
     const id_usuario = req.user.id_usuario;
 
     const result = await pool.query(
-      `SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.dni, u.n_telefono, u.creado_en,
-              p.nombre AS planta, r.descripcion AS rol
+      `SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.dni, u.n_telefono, u.creado_en, u.id_rol,
+              p.nombre AS planta, r.descripcion AS rol_descripcion
        FROM usuario u
        LEFT JOIN planta p ON u.id_planta = p.id_planta
        LEFT JOIN rol_usuario r ON u.id_rol = r.id_rol
@@ -359,6 +359,64 @@ const cambiarEstadoUsuario = async (req, res) => {
   }
 };
 
+const cambiarContrasenia = async (req, res) => {
+  try {
+    const id_usuario = req.user.id_usuario;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    // Validaciones
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ error: 'Todos los campos de contraseña son requeridos' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ error: 'Las contraseñas no coinciden' });
+    }
+
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    // Obtener usuario actual
+    const userResult = await pool.query(
+      'SELECT contrasenia FROM usuario WHERE id_usuario = $1',
+      [id_usuario]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const usuario = userResult.rows[0];
+
+    // Verificar contraseña actual
+    const esValida = await bcrypt.compare(oldPassword, usuario.contrasenia);
+    if (!esValida) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    // Hash de la nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Actualizar contraseña
+    await pool.query(
+      'UPDATE usuario SET contrasenia = $1 WHERE id_usuario = $2',
+      [hashedPassword, id_usuario]
+    );
+
+    res.json({ message: '✅ Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    res.status(500).json({ error: 'Error al cambiar la contraseña' });
+  }
+};
+
 module.exports = {
   obtenerUsuarios,
   crearUsuario,
@@ -367,5 +425,6 @@ module.exports = {
   getPerfil,
   updatePerfil,
   usuarioActual,
-  cambiarEstadoUsuario, // <-- exportar
+  cambiarEstadoUsuario,
+  cambiarContrasenia,
 };

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import AppNotification from '../components/AppNotification';
-import { formatDateFromDB } from '../utils/dateFormatter';
+import { formatDateFromDB, formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -665,19 +665,8 @@ export default function DetalleTropa() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Convertir fecha ISO a formato YYYY-MM-DD para input type="date"
-  const formatDateForInput = (isoDate) => {
-    if (!isoDate) return '';
-    try {
-      const date = new Date(isoDate);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch (e) {
-      return '';
-    }
-  };
+  // Usar la función del utils para evitar problemas de zona horaria
+  const formatDateForInput = (isoDate) => formatDateForInputUtil(isoDate);
 
   const showToast = (type, text, ms = 3000) => {
     setToast({ type, text });
@@ -1128,6 +1117,24 @@ export default function DetalleTropa() {
     };
     loadCategorias();
   }, [especieSeleccionada]);
+
+  // Pre-cargar especie cuando hay detalles ya guardados en la BD
+  useEffect(() => {
+    if (detalle && detalle.categorias && detalle.categorias.length > 0) {
+      const primerDetalle = detalle.categorias[0];
+      const nombreEspecie = primerDetalle.especie;
+      
+      // Buscar la opción de especie que coincida
+      const especieOption = especiesOptions.find(
+        (opt) => String(opt.label).toLowerCase() === String(nombreEspecie).toLowerCase()
+      );
+      
+      if (especieOption && !especieSeleccionada) {
+        console.log('[DetalleTropa] Pre-cargando especie de detalles guardados:', especieOption);
+        setEspecieSeleccionada(especieOption);
+      }
+    }
+  }, [detalle, especiesOptions]);
 
   const resolveIdFromItem = (item) => {
     if (!item) return null;
@@ -1960,7 +1967,8 @@ export default function DetalleTropa() {
       },
     ]);
 
-    setEspecieSeleccionada(null);
+    // Mantener la especie seleccionada para siguientes agregados
+    // Solo limpiar categoría y cantidad
     setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
   }
 
@@ -2166,16 +2174,23 @@ export default function DetalleTropa() {
   const saveTropaChanges = async () => {
     try {
       setSavingTropa(true);
+      
+      console.log('[DetalleTropa] Guardando cambios de tropa');
+      console.log('[DetalleTropa] fecha_ingreso original:', tropaEdicion.fecha_ingreso);
+      console.log('[DetalleTropa] fecha_ingreso después de formatDateForAPI:', formatDateForAPI(tropaEdicion.fecha_ingreso));
+      
       const payload = {
         n_tropa: tropaEdicion.n_tropa,
         dte_dtu: tropaEdicion.dte_dtu,
         guia_policial: tropaEdicion.guia_policial,
-        fecha_ingreso: tropaEdicion.fecha_ingreso,
+        fecha_ingreso: formatDateForAPI(tropaEdicion.fecha_ingreso),
         id_titular_faena: tropaEdicion.id_titular_faena,
         id_productor: tropaEdicion.id_productor,
         id_departamento: tropaEdicion.id_departamento,
         id_planta: tropaEdicion.id_planta,
       };
+      
+      console.log('[DetalleTropa] Payload completo:', payload);
 
       await api.put(`/tropas/${id}`, payload, {
         headers: getTokenHeaders(),
@@ -2274,12 +2289,14 @@ export default function DetalleTropa() {
                 <input
                   type="date"
                   value={formatDateForInput(tropaEdicion.fecha_ingreso) || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    console.log('[DetalleTropa] Fecha ingreso original:', tropaEdicion.fecha_ingreso);
+                    console.log('[DetalleTropa] Valor del input (e.target.value):', e.target.value);
                     setTropaEdicion((prev) => ({
                       ...prev,
                       fecha_ingreso: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className={INPUT_BASE_CLASS}
                 />
               </div>
@@ -2903,18 +2920,26 @@ export default function DetalleTropa() {
             Cargar Detalle por Especie
           </h2>
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-              <SelectField
-                label="Especie"
-                value={especieSeleccionada}
-                onChange={(opt) => {
-                  setEspecieSeleccionada(opt || null);
-                  setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
-                }}
-                options={especiesOptions}
-                placeholder="— Seleccionar especie —"
-                isClearable
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+              <div>
+                <SelectField
+                  label="Especie"
+                  value={especieSeleccionada}
+                  onChange={(opt) => {
+                    setEspecieSeleccionada(opt || null);
+                    setNuevoDetalle({ id_cat_especie: '', cantidad: '' });
+                  }}
+                  options={especiesOptions}
+                  placeholder="— Seleccionar especie —"
+                  isClearable
+                  isDisabled={detalle.categorias.length > 0 || bufferRows.length > 0}
+                />
+                {(detalle.categorias.length > 0 || bufferRows.length > 0) && especieSeleccionada && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    🔒 Especie bloqueada. Elimina todos los detalles para cambiarla.
+                  </p>
+                )}
+              </div>
               <SelectField
                 label="Categoría"
                 value={
@@ -3020,6 +3045,7 @@ export default function DetalleTropa() {
                               }
                               options={especiesOptions}
                               placeholder="— Seleccionar especie —"
+                              isDisabled={bufferRows.length > 0}
                             />
                           </td>
                           <td className="px-4 py-2">
@@ -3113,6 +3139,7 @@ export default function DetalleTropa() {
                         }
                         options={especiesOptions}
                         placeholder="— Seleccionar especie —"
+                        isDisabled={bufferRows.length > 0}
                       />
                       <SelectField
                         value={
@@ -3168,20 +3195,20 @@ export default function DetalleTropa() {
                   ))}
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-green-700 text-white rounded text-sm hover:bg-green-800"
-                    onClick={saveBufferAll}
-                  >
-                    Guardar detalle agregado
-                  </button>
+                <div className="mt-4 flex gap-2 justify-between">
                   <button
                     type="button"
                     className="px-4 py-2 border rounded text-sm"
                     onClick={() => setBufferRows([])}
                   >
                     Limpiar detalle agregado
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-green-700 text-white rounded text-sm hover:bg-green-800"
+                    onClick={saveBufferAll}
+                  >
+                    Guardar detalle agregado
                   </button>
                 </div>
               </div>
@@ -3190,7 +3217,7 @@ export default function DetalleTropa() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-start">
           <button
             type="button"
             onClick={() => {

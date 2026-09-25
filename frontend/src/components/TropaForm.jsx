@@ -331,14 +331,67 @@ function InlineCreateModal({
       if (onNotify) onNotify('error', 'El CUIT debe tener 11 dígitos.');
       return;
     }
+    
     setLoading(true);
     try {
+      // Obtener datos frescos del servidor para validar duplicados
       const endpoint =
         type === 'departamento'
           ? '/departamentos'
           : type === 'productor'
           ? '/productores'
           : '/titulares-faena';
+
+      // Traer lista actual de datos
+      let existentes = [];
+      try {
+        const resExistentes = await api.get(endpoint, { timeout: 10000 });
+        existentes = Array.isArray(resExistentes?.data) ? resExistentes.data : [];
+      } catch (e) {
+        console.warn('No se pudo traer datos existentes para validar duplicados:', e);
+      }
+
+      // Validar duplicados
+      if (type === 'departamento') {
+        const nombreDeptNorm = values.nombre_departamento.trim().toLowerCase();
+        const existeDuplicado = existentes.some((d) => {
+          const descNorm = (d.nombre_departamento || d.descripcion || '').trim().toLowerCase();
+          return descNorm === nombreDeptNorm && String(d.id_provincia) === String(values.id_provincia);
+        });
+        if (existeDuplicado) {
+          setError('❌ Este departamento ya existe en esta provincia.');
+          if (onNotify) onNotify('error', 'Este departamento ya existe en esta provincia.');
+          setLoading(false);
+          return;
+        }
+      } else if (type === 'productor') {
+        const cuitNorm = values.cuit.replace(/\D/g, '');
+        const existeDuplicado = existentes.some((p) => {
+          const cuitExistente = String(p.cuit || '').replace(/\D/g, '');
+          return cuitExistente === cuitNorm;
+        });
+        if (existeDuplicado) {
+          setError('❌ Este CUIT de productor ya está registrado.');
+          if (onNotify) onNotify('error', 'Este CUIT de productor ya está registrado.');
+          setLoading(false);
+          return;
+        }
+      } else if (type === 'titular') {
+        const cuitNorm = values.cuit.replace(/\D/g, '');
+        // Solo validar duplicado si el CUIT no está vacío (CUIT es opcional para titulares)
+        if (cuitNorm) {
+          const existeDuplicado = existentes.some((t) => {
+            const cuitExistente = String(t.cuit || t.documento || '').replace(/\D/g, '');
+            return cuitExistente === cuitNorm;
+          });
+          if (existeDuplicado) {
+            setError('❌ Este CUIT de titular ya está registrado.');
+            if (onNotify) onNotify('error', 'Este CUIT de titular ya está registrado.');
+            setLoading(false);
+            return;
+          }
+        }
+      }
 
       const payload =
         type === 'departamento'
