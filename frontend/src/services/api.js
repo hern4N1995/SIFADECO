@@ -24,7 +24,7 @@ function getApiBase() {
     if (hostname === 'test.sifadeco.gob.ar') {
       console.log('[API] Detectado test.sifadeco.gob.ar');
       // ⚠️ REEMPLAZA CON LA URL CORRECTA DE TU BACKEND DE TEST
-      return 'https://api-test.sifadeco.gob.ar/api'; // O LA URL QUE SEA
+      return '/api';
       // return 'http://backend-test/api'; // Alternativamente
     }
 
