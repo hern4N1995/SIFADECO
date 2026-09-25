@@ -126,7 +126,7 @@ export default function Sidebar() {
           {!open && (
             <button
               onClick={() => setOpen(true)}
-              className="lg:hidden fixed top-24 left-4 z-40 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl hover:bg-primary transition"
+              className="lg:hidden print:hidden fixed top-24 left-4 z-40 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl hover:bg-primary transition"
               aria-label="Abrir menú"
             >
               <HiMenu size={22} />
@@ -142,7 +142,7 @@ export default function Sidebar() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ type: 'tween', duration: 0.2 }}
-                  className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                  className="fixed inset-0 z-40 bg-black/50 lg:hidden print:hidden"
                   onClick={() => setOpen(false)}
                 />
                 {/* Sidebar */}
@@ -152,7 +152,7 @@ export default function Sidebar() {
                   animate={{ x: 0 }}
                   exit={{ x: '-100%' }}
                   transition={{ type: 'tween', duration: 0.3 }}
-                  className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
+                  className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl print:hidden"
                 >
                 <button
                   onClick={() => setOpen(false)}

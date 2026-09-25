@@ -216,7 +216,10 @@ export default function InformeFaenaPage() {
       }
 
       console.log('[InformeFaenaPage] Llamando API con params:', params);
-      const res = await api.get('/faena/faenas-realizadas', { params });
+      // Aumentar límite a 1000 para obtener todas las faenas (no solo 100)
+      const res = await api.get('/faena/faenas-realizadas', { 
+        params: { ...params, limit: 1000 } 
+      });
       console.log('[InformeFaenaPage] Respuesta recibida:', res.data);
       
       // Procesar respuesta
@@ -270,13 +273,31 @@ export default function InformeFaenaPage() {
 
   // Totales calculados a partir de faenas
   const totals = useMemo(() => {
-    const total = faenas.length;
+    // Contar tropas únicas por planta (todas las que tuvieron faenas)
+    const tropasPorPlanta = {};
+    const animalesPorPlanta = {};
+    
+    faenas.forEach((f) => {
+      const planta = f.nombre_planta || `Planta ${f.id_planta || ''}`;
+      
+      // Contar tropas únicas por planta (usar Set para evitar duplicados)
+      if (!tropasPorPlanta[planta]) {
+        tropasPorPlanta[planta] = new Set();
+      }
+      tropasPorPlanta[planta].add(f.id_tropa);
+      
+      // Sumar animales faenados por planta
+      if (!animalesPorPlanta[planta]) {
+        animalesPorPlanta[planta] = 0;
+      }
+      animalesPorPlanta[planta] += Number(f.total_faenado || 0);
+    });
 
-    // Calcular sum_faenado por tropa
-    const sumFaenadoByTropa = faenas.reduce((acc, f) => {
-      acc[f.tropa_id] = (acc[f.tropa_id] || 0) + Number(f.total_faenado || 0);
-      return acc;
-    }, {});
+    // Convertir Sets a conteos
+    const byPlantaTropas = {};
+    Object.entries(tropasPorPlanta).forEach(([planta, tropas]) => {
+      byPlantaTropas[planta] = tropas.size;
+    });
 
     const byEstadoAnimales = {
       finalizada: totalFaenados,
@@ -288,16 +309,27 @@ export default function InformeFaenaPage() {
       acc[est] = (acc[est] || 0) + 1;
       return acc;
     }, {});
-    const byPlanta = faenas.reduce((acc, f) => {
-      const planta = f.nombre_planta || `Planta ${f.id_planta || ''}`;
-      acc[planta] = (acc[planta] || 0) + 1;
-      return acc;
-    }, {});
 
-    return { total, byEstado, byEstadoAnimales, byPlanta };
-  }, [faenas, totalPorTropa]);
+    const totalTropas = Object.values(byPlantaTropas).reduce((sum, cnt) => sum + cnt, 0);
 
-  // datos de tendencia (construidos a partir de faenas - simple agrupación por mes)
+    console.log('[InformeFaenaPage totals]', {
+      totalFaenas: faenas.length,
+      totalTropas: totalTropas,
+      tropasFaenadasCompletas: tropasFaenadasCompletas,
+      tropasPorPlanta: byPlantaTropas,
+      animalesPorPlanta,
+    });
+
+    return { 
+      total: totalTropas,  // Total de tropas con faenas (desde frontend)
+      byEstado, 
+      byEstadoAnimales, 
+      byPlanta: byPlantaTropas,  // Tropas por planta
+      animalesPorPlanta,
+    };
+  }, [faenas, tropasFaenadasCompletas]);
+
+  // datos de tendencia: sumar animales faenados por mes (no contar faenas)
   const tendencia = useMemo(() => {
     const map = {};
     faenas.forEach((f) => {
@@ -306,7 +338,8 @@ export default function InformeFaenaPage() {
         2,
         '0'
       )}`;
-      map[key] = (map[key] || 0) + 1;
+      // Sumar animales faenados, no contar faenas
+      map[key] = (map[key] || 0) + Number(f.total_faenado || 0);
     });
     const entries = Object.entries(map).sort();
     const numMonths = period === 'all' ? entries.length : parseInt(period);
@@ -640,7 +673,7 @@ export default function InformeFaenaPage() {
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold text-gray-900">
-                  Tendencia mensual
+                  Tendencia mensual (Animales faenados)
                 </h3>
                 <select
                   value={period}
@@ -695,14 +728,14 @@ export default function InformeFaenaPage() {
           {/* Tabla por planta */}
           <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h3 className="text-base font-semibold mb-3 text-gray-900">
-              Faenas por planta
+              Tropas procesadas por planta
             </h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs text-gray-500 uppercase tracking-wide">
                     <th className="py-2 pr-4">Planta</th>
-                    <th className="py-2 pr-4">Cantidad</th>
+                    <th className="py-2 pr-4">Tropas</th>
                     <th className="py-2 pr-4">% del total</th>
                   </tr>
                 </thead>
@@ -724,8 +757,17 @@ export default function InformeFaenaPage() {
           {/* Nota explicativa */}
           <div className="mt-4 text-xs text-gray-500 text-center">
             <p>
-              Este informe ofrece una visión rápida del desempeño operativo. Los
-              datos se actualizan según los filtros aplicados.
+              Este informe ofrece una visión rápida del desempeño operativo.
+            </p>
+            <p className="mt-1 text-gray-600">
+              <strong>Nota:</strong> Tendencia mensual = animales faenados por mes.
+              Tropas faenadas por planta = todas las tropas procesadas (no solo las completas).
+            </p>
+            <p className="mt-1">
+              Tropas completamente faenadas: {tropasFaenadasCompletas} de {totalTropas} total.
+            </p>
+            <p className="mt-1">
+              Los datos se actualizan según los filtros aplicados.
             </p>
           </div>
         </div>

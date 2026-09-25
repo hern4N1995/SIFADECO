@@ -194,7 +194,8 @@ export default function InformesPage() {
     try {
       // Obtener decomisos y faenas
       const decomisosRes = await api.get('/decomisos');
-      const faenasRes = await api.get('/faena/faenas-realizadas');
+      // Aumentar límite a 1000 para obtener todas las faenas del mes (máximo en la mayoría de casos)
+      const faenasRes = await api.get('/faena/faenas-realizadas', { params: { limit: 1000 } });
       const detallesRes = await api.get('/faena/detalles-categorias');
       let decomisosData = decomisosRes.data || [];
       let faenasData = faenasRes.data?.faenas || faenasRes.data || [];
@@ -272,8 +273,7 @@ export default function InformesPage() {
           const cantidad = parseInt(f.total_faenado) || 0;
 
           console.log(
-            `[InformesPage] Faena día ${dia}: cantidad=${cantidad}, faena:`,
-            f,
+            `[InformesPage] Faena VÁLIDA día ${dia}: cantidad=${cantidad}, tropa=${f.n_tropa}, fecha=${f.fecha_faena}`,
           );
 
           if (!animalesPorDia[dia]) {
@@ -288,7 +288,7 @@ export default function InformesPage() {
         }
       });
 
-      console.log('[InformesPage] Animales por día:', animalesPorDia);
+      console.log('[InformesPage] Animales por día después de procesamiento:', animalesPorDia);
       setAnimalesFaenados(animalesPorDia);
 
       // Procesar faenas para obtener categorías por especie (dinámico)
@@ -813,6 +813,19 @@ export default function InformesPage() {
                                 });
                                 return sum + totalEnfermedad;
                               }, 0)}
+                          </td>
+                        </tr>
+                        <tr className="bg-blue-100 font-bold">
+                          <td
+                            colSpan="2"
+                            className="px-2 sm:px-3 py-1 text-right text-gray-800 border border-gray-300 text-[10px] sm:text-xs"
+                          >
+                            TOTAL ANIMALES AFECTADOS
+                          </td>
+                          <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300 text-[10px] sm:text-xs">
+                            {diasOrdenados.reduce((sum, dia) => {
+                              return sum + (dataByDay[dia]?.totalAnimales || 0);
+                            }, 0)}
                           </td>
                         </tr>
                       </tfoot>

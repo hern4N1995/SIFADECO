@@ -141,6 +141,7 @@ export default function InormeDecomisosPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isPrintMode, setIsPrintMode] = useState(false);
   const itemsPerPage = 20;
 
   // Métricas agregadas
@@ -427,10 +428,12 @@ export default function InormeDecomisosPage() {
   }, [decomisos]);
 
   const totalPages = Math.max(1, Math.ceil(sortedDecomisos.length / itemsPerPage));
-  const paginatedDecomisos = sortedDecomisos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const paginatedDecomisos = isPrintMode 
+    ? sortedDecomisos 
+    : sortedDecomisos.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
+      );
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -599,9 +602,20 @@ export default function InormeDecomisosPage() {
           {/* Botón impresión */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-end items-end gap-2 sm:gap-3 md:gap-4 no-print mb-4">
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                // Activar modo impresión para mostrar todos los datos
+                setIsPrintMode(true);
+                // Esperar a que React renderice todos los datos
+                setTimeout(() => {
+                  window.print();
+                  // Desactivar modo impresión después de que se cierre el diálogo de impresión
+                  setTimeout(() => {
+                    setIsPrintMode(false);
+                  }, 500);
+                }, 100);
+              }}
               className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-xs sm:text-sm print:hidden whitespace-nowrap"
-              title="Imprimir informe"
+              title="Imprimir informe (con todos los datos)"
             >
               <svg
                 className="w-4 h-4"
@@ -819,11 +833,11 @@ export default function InormeDecomisosPage() {
           </div>
 
           {/* Tabla detallada de decomisos */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
-            <h3 className="text-base font-semibold mb-3 text-gray-900">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 print:bg-white print:border-0 print:rounded-none print:p-0">
+            <h3 className="text-base font-semibold mb-3 text-gray-900 print:hidden">
               Detalle de decomisos
             </h3>
-            <div className="grid gap-3 lg:hidden print:hidden">
+            <div className={`grid gap-3 lg:hidden ${isPrintMode ? 'hidden' : 'print:hidden'}`}>
               {paginatedDecomisos.map((d, idx) => (
                 <article
                   key={`${currentPage}-${idx}`}
@@ -901,7 +915,7 @@ export default function InormeDecomisosPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-3 no-print">
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 mt-3 no-print ${isPrintMode ? 'hidden' : ''}`}>
               <p className="text-xs text-gray-600">
                 Mostrando {paginatedDecomisos.length} de {sortedDecomisos.length} decomisos
               </p>
@@ -942,15 +956,16 @@ export default function InormeDecomisosPage() {
       <style>{`
         @page {
           size: A4;
-          margin: 0;
+          margin: 15mm;
           padding: 0;
-          margin-top: 0;
-          margin-bottom: 0;
-          margin-left: 0;
-          margin-right: 0;
         }
 
         @media print {
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           .no-print {
             display: none !important;
           }
@@ -984,8 +999,10 @@ export default function InormeDecomisosPage() {
 
           .bg-gray-50 {
             background-color: white !important;
-            margin: 10mm 10mm 0 10mm !important;
+            margin: 0 !important;
             padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
           }
 
           .max-w-6xl {
@@ -999,18 +1016,32 @@ export default function InormeDecomisosPage() {
             border: none !important;
             margin: 0 !important;
             padding: 0 !important;
+            border-radius: 0 !important;
           }
 
           h1 {
             margin-top: 0 !important;
-            margin-bottom: 10mm !important;
+            margin-bottom: 8mm !important;
+            page-break-after: avoid !important;
+          }
+
+          h2 {
+            margin-top: 5mm !important;
+            margin-bottom: 4mm !important;
             page-break-after: avoid !important;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
+            page-break-inside: auto;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          tr {
             page-break-inside: avoid;
+            page-break-after: auto;
           }
 
           th,

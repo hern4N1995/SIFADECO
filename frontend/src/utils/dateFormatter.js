@@ -191,14 +191,31 @@ export function getDayFromDate(dateInput) {
 /**
  * Extrae YEAR, MONTH, DAY de una fecha sin problemas de zona horaria
  * ⚠️ CRÍTICO: Para usar en comparaciones de mes/año
+ * Soporta: strings ISO, strings YYYY-MM-DD, objetos Date
  * 
- * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-09-10" o "2026-09-10T00:00:00Z")
+ * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-09-10" o "2026-09-10T00:00:00Z" o Date object)
  * @returns {Object} { year, month, day } con valores numéricos, o null si no es válida
  */
 export function getDateComponentsFromDB(dateInput) {
   if (!dateInput) return null;
   
   try {
+    // Si es un objeto Date, usar ISO string para evitar problemas de zona horaria
+    if (dateInput instanceof Date) {
+      // Convertir a ISO string y extraer la parte de fecha
+      const isoString = dateInput.toISOString();
+      const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        return {
+          year: parseInt(match[1]),
+          month: parseInt(match[2]),
+          day: parseInt(match[3]),
+        };
+      }
+      return null;
+    }
+    
+    // Convertir a string
     let dateString = String(dateInput).trim();
     
     // Si tiene hora, extraer solo la parte de fecha
@@ -206,17 +223,18 @@ export function getDateComponentsFromDB(dateInput) {
       dateString = dateString.split('T')[0];
     }
     
-    // Validar formato YYYY-MM-DD
+    // Intentar parsear formato YYYY-MM-DD
     const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) {
-      return null;
+    if (match) {
+      return {
+        year: parseInt(match[1]),
+        month: parseInt(match[2]),
+        day: parseInt(match[3]),
+      };
     }
     
-    return {
-      year: parseInt(match[1]),
-      month: parseInt(match[2]),
-      day: parseInt(match[3]),
-    };
+    // Si no coincide, retornar null
+    return null;
   } catch (e) {
     console.error('Error al extraer componentes de fecha:', e);
     return null;
