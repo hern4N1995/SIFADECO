@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:16-alpine
     container_name: sifadeco_db
+    ports:
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${PGUSER:-postgres}
