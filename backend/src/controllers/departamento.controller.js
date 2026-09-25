@@ -21,11 +21,19 @@ const obtenerDepartamentos = async (req, res) => {
 };
 
 // Crear nuevo departamento con id_provincia
-// Crear nuevo departamento con id_provincia
 const crearDepartamento = async (req, res) => {
+  // 🔍 DEBUG: Log completo de qué recibe el backend
+  console.log('[DEPARTAMENTO DEBUG]', {
+    headers: req.headers,
+    body: req.body,
+    contentType: req.headers['content-type'],
+    method: req.method,
+  });
+  
   const { nombre_departamento, id_provincia } = req.body;
 
   if (!nombre_departamento || !id_provincia || isNaN(id_provincia)) {
+    console.log('[DEPARTAMENTO] ❌ Datos incompletos:', { nombre_departamento, id_provincia });
     return res.status(400).json({ error: 'Datos incompletos o inválidos' });
   }
 
@@ -36,6 +44,7 @@ const crearDepartamento = async (req, res) => {
       [id_provincia],
     );
     if (existeProvincia.rowCount === 0) {
+      console.log('[DEPARTAMENTO] ❌ Provincia inexistente:', id_provincia);
       return res.status(400).json({ error: 'Provincia inexistente' });
     }
 
@@ -74,7 +83,13 @@ const crearDepartamento = async (req, res) => {
 
     res.status(201).json(nuevo.rows[0]);
   } catch (error) {
-    console.error('Error al crear departamento:', error.message);
+    console.error('[DEPARTAMENTO ERROR - 500]', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack,
+      query: 'Probablemente fallo el JOIN a provincia después de INSERT',
+    });
     res.status(500).json({ error: 'Error al crear departamento' });
   }
 };

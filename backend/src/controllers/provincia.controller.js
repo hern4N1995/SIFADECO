@@ -13,11 +13,20 @@ const obtenerProvincias = async (req, res) => {
 };
 
 const agregarProvincia = async (req, res) => {
+  // 🔍 DEBUG: Log completo de qué recibe el backend
+  console.log('[PROVINCIA DEBUG]', {
+    headers: req.headers,
+    body: req.body,
+    contentType: req.headers['content-type'],
+    method: req.method,
+  });
+  
   let { descripcion } = req.body;
   
   try {
     // Validar entrada
     if (!descripcion || !descripcion.trim()) {
+      console.log('[PROVINCIA] ❌ Descripción vacía o undefined:', { descripcion, type: typeof descripcion });
       return res.status(400).json({ error: 'La descripción es obligatoria' });
     }
     

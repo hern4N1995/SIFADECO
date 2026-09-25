@@ -29,7 +29,18 @@ const obtenerTitulares = async (req, res) => {
 
 // Crear titular
 const crearTitular = async (req, res) => {
+  // 🔍 DEBUG: Log completo de qué recibe el backend
+  console.log('[TITULAR_FAENA DEBUG]', {
+    headers: req.headers,
+    body: req.body,
+    contentType: req.headers['content-type'],
+    method: req.method,
+  });
+
   const { nombre, id_provincia, localidad, direccion, cuit, documento } = req.body;
+  
+  console.log('[TITULAR_FAENA] Validando datos:', { nombre, id_provincia, localidad });
+  
   if (!nombre || !id_provincia || !localidad) {
     return res
       .status(400)
@@ -42,7 +53,22 @@ const crearTitular = async (req, res) => {
   }
 
   try {
+    // ✅ VALIDAR QUE LA PROVINCIA EXISTA
+    console.log('[TITULAR_FAENA] Verificando provincia:', id_provincia);
+    const provinciaCheck = await pool.query(
+      'SELECT 1 FROM provincia WHERE id_provincia = $1',
+      [id_provincia]
+    );
+    
+    if (provinciaCheck.rowCount === 0) {
+      console.log('[TITULAR_FAENA] ❌ Provincia inexistente:', id_provincia);
+      return res.status(400).json({ error: 'Provincia inexistente' });
+    }
+    
+    console.log('[TITULAR_FAENA] ✓ Provincia válida');
+
     // Insertar titular
+    console.log('[TITULAR_FAENA] Insertando nuevo titular...');
     const insert = await pool.query(
       `INSERT INTO titular_faena (nombre, id_provincia, localidad, direccion, cuit)
        VALUES ($1, $2, $3, $4, $5)
@@ -57,6 +83,7 @@ const crearTitular = async (req, res) => {
     );
 
     const nuevo = insert.rows[0];
+    console.log('[TITULAR_FAENA] ✓ Insertado:', nuevo);
 
     // Obtener nombre de provincia
     const provinciaRes = await pool.query(
@@ -70,7 +97,12 @@ const crearTitular = async (req, res) => {
     // Devolver titular completo
     res.status(201).json({ ...nuevo, provincia });
   } catch (error) {
-    console.error('Error al crear titular:', error.message);
+    console.error('[TITULAR_FAENA ERROR - 500]', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack,
+    });
     res.status(500).json({ error: 'Error al crear titular' });
   }
 };

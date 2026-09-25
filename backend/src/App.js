@@ -215,6 +215,7 @@ const partesDecomisadasRoutes = loadRoute('./routes/partesDecomisadas.routes');
 const decomisoDetalleRoutes = loadRoute('./routes/decomisoDetalle.routes');
 const tropaDetalleRoutes = loadRoute('./routes/tropaDetalle.routes');
 const tropaEliminacionRoutes = loadRoute('./routes/tropaEliminacion.routes');
+const diagnosticoRoutes = loadRoute('./routes/diagnostico.routes');
 
 /* ---------------------------
    App y CORS manual
@@ -435,6 +436,14 @@ safeMount(
   '/api/tropas-eliminacion',
   tropaEliminacionRoutes,
   './routes/tropaEliminacion.routes',
+);
+
+// Montar diagnosticoRoutes para debugging
+safeMount(
+  app,
+  '/api/diagnostico',
+  diagnosticoRoutes,
+  './routes/diagnostico.routes',
 );
 
 /* ---------------------------

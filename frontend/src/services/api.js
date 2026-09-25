@@ -6,6 +6,7 @@ import { clearAuthStorage } from '../utils/auth';
 /**
  * Determina la base del API en RUNTIME:
  * - Si el hostname es sifadeco.vercel.app → usa backend remoto (onrender.com)
+ * - Si es test.sifadeco.gob.ar → usa backend en test
  * - Si es localhost o 127.0.0.1 → usa /api relativo
  * - Fallback: /api
  */
@@ -19,6 +20,14 @@ function getApiBase() {
       return 'https://sifadeco.onrender.com/api';
     }
 
+    // Test: usar backend de test (REEMPLAZAR CON URL CORRECTA)
+    if (hostname === 'test.sifadeco.gob.ar') {
+      console.log('[API] Detectado test.sifadeco.gob.ar');
+      // ⚠️ REEMPLAZA CON LA URL CORRECTA DE TU BACKEND DE TEST
+      return 'https://api-test.sifadeco.gob.ar/api'; // O LA URL QUE SEA
+      // return 'http://backend-test/api'; // Alternativamente
+    }
+
     // Localhost: usar /api relativo
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       console.log('[API] Detectado localhost, usando /api');
@@ -27,6 +36,7 @@ function getApiBase() {
   }
 
   // Fallback
+  console.warn('[API] Hostname no reconocido:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
   return '/api';
 }
 
