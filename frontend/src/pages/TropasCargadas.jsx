@@ -393,7 +393,7 @@ export default function TropasCargadas() {
     return t.planta_nombre ?? t.planta ?? '—';
   };
 
-  // Solicitar eliminación de tropa (rol 3)
+  // Solicitar eliminación de tropa (rol 1 o 3)
   const handleSolicitarEliminacion = async (tropaId) => {
     if (!tropaId) return;
     
@@ -463,7 +463,7 @@ export default function TropasCargadas() {
   const RowActions = ({ tropa }) => {
     // Si no hay estado o es null, lo consideramos como 'activa'
     const estado = tropa.estado || 'activa';
-    const canDelete = (rol === 2 || rol === 3) && estado === 'activa';
+    const canDelete = (rol === 1 || rol === 2 || rol === 3) && estado === 'activa';
     const isPending = estado === 'pendiente_eliminacion';
     
     return (
@@ -894,7 +894,7 @@ export default function TropasCargadas() {
                       <li>Esto solicitará la eliminación de <strong>TODA</strong> la tropa</li>
                       <li>Se eliminarán todas las faenas asociadas a esta tropa</li>
                       <li>Se eliminarán todos los decomisos de esas faenas</li>
-                      <li>Un administrador debe confirmar esta acción</li>
+                      <li>{rol === 1 ? 'Otro administrador debe confirmar esta acción' : 'Un administrador debe confirmar esta acción'}</li>
                       <li>Mientras se procesa, la tropa aparecerá marcada en amarillo</li>
                     </ul>
                   </div>

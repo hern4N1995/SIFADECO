@@ -59,13 +59,7 @@ exports.login = async (req, res) => {
       },
     });
 
-    console.log(req.body);
-    console.log("Email recibido:", email);
-    console.log("Resultado DB:", result.rows);
-    console.log("Usuario encontrado:", usuario.email);
-    console.log("Rol del usuario:", usuario.id_rol);
-    console.log(`Login exitoso para ${usuario.email} con rol ${usuario.id_rol}`);
-    console.log(`Token generado con expiración: 30 días`);
+    console.log(`[AUTH] Login exitoso para usuario ${usuario.id_usuario} (rol ${usuario.id_rol})`);
 
 
   } catch (error) {

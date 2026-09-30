@@ -394,16 +394,18 @@ export default function FaenasRealizadasPage() {
       });
 
       setFaenas((prev) => {
-        const actualizadas = prev.map((f) => {
-          if (String(f.id_faena) !== String(modalModificar.data.id_faena)) {
-            return f;
-          }
-          return {
-            ...f,
-            fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
-            total_faenado: totalModificado,
-          };
-        });
+        const actualizadas = totalModificado === 0
+          ? prev.filter((f) => String(f.id_faena) !== String(modalModificar.data.id_faena))
+          : prev.map((f) => {
+              if (String(f.id_faena) !== String(modalModificar.data.id_faena)) {
+                return f;
+              }
+              return {
+                ...f,
+                fecha_faena: formatDateForAPI(modalModificar.data.fecha_faena),
+                total_faenado: totalModificado,
+              };
+            });
 
         const nuevoTotalFaenados = actualizadas.reduce((acc, item) => {
           const v = Number(item.total_faenado ?? 0);

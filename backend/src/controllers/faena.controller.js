@@ -562,10 +562,16 @@ const modificarFaena = async (req, res) => {
 
     const detalleActual = await client.query(
       `SELECT
+        fd.id_faena_detalle,
         fd.id_tropa_detalle,
         COALESCE(fd.cantidad_faena, 0)::int AS cantidad_actual,
         COALESCE(td.cantidad, 0)::int AS cantidad_inicial,
-        COALESCE(sumfd.total_faenado, 0)::int AS total_faenado_detalle
+        COALESCE(sumfd.total_faenado, 0)::int AS total_faenado_detalle,
+        (
+          SELECT COUNT(*)::int
+          FROM decomiso d
+          WHERE d.id_faena_detalle = fd.id_faena_detalle
+        ) AS cantidad_decomisos
       FROM faena_detalle fd
       JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
       LEFT JOIN (
@@ -609,29 +615,58 @@ const modificarFaena = async (req, res) => {
           error: `La cantidad para ${cat.id_tropa_detalle} supera el remanente permitido (${maxPermitido})`,
         });
       }
+
+      if (nuevaCantidad === 0 && Number(detalle.cantidad_decomisos) > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          error: 'No se puede quitar esta categoría porque tiene decomisos asociados.',
+        });
+      }
     }
 
-    // Actualizar fecha si se envió
-    if (fecha_faena) {
+    // A zero quantity means this category is no longer part of the faena.
+    for (const cat of categorias) {
+      if (!cat.id_tropa_detalle || cat.cantidad_faena === undefined) continue;
+      const cantidad = Number(cat.cantidad_faena);
+      if (cantidad === 0) {
+        await client.query(
+          'DELETE FROM faena_detalle WHERE id_faena = $1 AND id_tropa_detalle = $2',
+          [parseInt(id_faena), cat.id_tropa_detalle],
+        );
+      } else {
+        await client.query(
+          `UPDATE faena_detalle
+           SET cantidad_faena = $1
+           WHERE id_faena = $2 AND id_tropa_detalle = $3`,
+          [cantidad, parseInt(id_faena), cat.id_tropa_detalle],
+        );
+      }
+    }
+
+    const detallesRestantes = await client.query(
+      'SELECT 1 FROM faena_detalle WHERE id_faena = $1 LIMIT 1',
+      [parseInt(id_faena)],
+    );
+
+    if (detallesRestantes.rowCount === 0) {
+      await client.query('DELETE FROM faena_veterinario WHERE id_faena = $1', [
+        parseInt(id_faena),
+      ]);
+      await client.query('DELETE FROM faena WHERE id_faena = $1', [
+        parseInt(id_faena),
+      ]);
+    } else if (fecha_faena) {
       await client.query(
         'UPDATE faena SET fecha_faena = $1 WHERE id_faena = $2',
         [fecha_faena, parseInt(id_faena)],
       );
     }
 
-    // Actualizar cantidades por id_tropa_detalle
-    for (const cat of categorias) {
-      if (!cat.id_tropa_detalle || cat.cantidad_faena === undefined) continue;
-      await client.query(
-        `UPDATE faena_detalle
-         SET cantidad_faena = $1
-         WHERE id_faena = $2 AND id_tropa_detalle = $3`,
-        [Number(cat.cantidad_faena), parseInt(id_faena), cat.id_tropa_detalle],
-      );
-    }
-
     await client.query('COMMIT');
-    res.status(200).json({ message: 'Faena actualizada correctamente' });
+    res.status(200).json({
+      message: 'Faena actualizada correctamente',
+      faena_eliminada: detallesRestantes.rowCount === 0,
+    });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al modificar faena:', error.message);

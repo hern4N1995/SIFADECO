@@ -90,6 +90,14 @@ const crearDepartamento = async (req, res) => {
       stack: error.stack,
       query: 'Probablemente fallo el JOIN a provincia después de INSERT',
     });
+
+    if (error.code === '23505' && error.constraint === 'departamento_pkey') {
+      return res.status(500).json({
+        error: 'La secuencia de IDs de departamentos está desincronizada. Ejecuta la migración de sincronización de secuencias.',
+        code: 'DEPARTAMENTO_SEQUENCE_OUT_OF_SYNC',
+      });
+    }
+
     res.status(500).json({ error: 'Error al crear departamento' });
   }
 };

@@ -18,7 +18,7 @@ export default function Layout() {
 
       <div className="flex flex-1">
         {!hideSidebar && <Sidebar />}
-        <main className="flex-1">
+        <main className="min-w-0 flex-1">
           <Outlet />
         </main>
       </div>

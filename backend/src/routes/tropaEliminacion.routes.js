@@ -9,8 +9,8 @@ const {
   cancelarSolicitud,
 } = require('../controllers/tropaEliminacion.controller');
 
-const { verificarToken } = require('../middleware/verificarToken');
-const { permitirRoles } = require('../middleware/rolMiddleware');
+const { verificarToken } = require('../middleware/auth');
+const { permitirRoles } = require('../middleware/roles');
 
 /**
  * RUTAS PROTEGIDAS PARA ELIMINACIÓN DE TROPAS
@@ -19,13 +19,13 @@ const { permitirRoles } = require('../middleware/rolMiddleware');
 
 /**
  * POST /api/tropas-eliminacion/:tropaId/solicitar
- * Solicitar eliminación de una tropa (rol 2 y 3 - usuario/vendedor)
+ * Solicitar eliminación de una tropa (roles 1 - admin, 2 - supervisor, 3 - usuario)
  * Body: { motivo: string (opcional) }
  */
 router.post(
   '/:tropaId/solicitar',
   verificarToken,
-  permitirRoles(2, 3),
+  permitirRoles(1, 2, 3),
   solicitarEliminacion
 );
 

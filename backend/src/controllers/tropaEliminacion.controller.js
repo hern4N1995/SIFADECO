@@ -1,9 +1,52 @@
 // controllers/tropaEliminacion.controller.js
 const pool = require('../db');
 
+const obtenerResumenAnimalesTropa = async (client, tropaId) => {
+  const result = await client.query(
+    `WITH faena_por_detalle AS (
+       SELECT fd.id_tropa_detalle, SUM(fd.cantidad_faena)::int AS cantidad_faenada
+       FROM faena_detalle fd
+       JOIN faena f ON f.id_faena = fd.id_faena
+       WHERE f.id_tropa = $1
+       GROUP BY fd.id_tropa_detalle
+     ), decomiso_por_detalle AS (
+       SELECT fd.id_tropa_detalle,
+              SUM(COALESCE(dd.animales_afectados, 0))::int AS animales_decomisados
+       FROM faena_detalle fd
+       JOIN faena f ON f.id_faena = fd.id_faena
+       JOIN decomiso d ON d.id_faena_detalle = fd.id_faena_detalle
+       LEFT JOIN decomiso_detalle dd ON dd.id_decomiso = d.id_decomiso
+       WHERE f.id_tropa = $1
+       GROUP BY fd.id_tropa_detalle
+     )
+     SELECT e.descripcion AS especie,
+            ce.descripcion AS categoria,
+            SUM(td.cantidad)::int AS cantidad_total,
+            SUM(COALESCE(fpd.cantidad_faenada, 0))::int AS cantidad_faenada,
+            SUM(COALESCE(dpd.animales_decomisados, 0))::int AS animales_decomisados
+     FROM tropa_detalle td
+     LEFT JOIN especie e ON e.id_especie = td.id_especie
+     LEFT JOIN categoria_especie ce ON ce.id_cat_especie = td.id_cat_especie
+     LEFT JOIN faena_por_detalle fpd ON fpd.id_tropa_detalle = td.id_tropa_detalle
+     LEFT JOIN decomiso_por_detalle dpd ON dpd.id_tropa_detalle = td.id_tropa_detalle
+     WHERE td.id_tropa = $1
+     GROUP BY e.descripcion, ce.descripcion
+     ORDER BY e.descripcion, ce.descripcion`,
+    [tropaId],
+  );
+
+  return result.rows.map((row) => ({
+    especie: row.especie,
+    categoria: row.categoria,
+    cantidad_total: Number(row.cantidad_total) || 0,
+    cantidad_faenada: Number(row.cantidad_faenada) || 0,
+    animales_decomisados: Number(row.animales_decomisados) || 0,
+  }));
+};
+
 /**
  * SOLICITAR ELIMINACIÓN DE TROPA
- * Rol 3 (usuario) solicita la eliminación
+ * Roles 1 (admin), 2 (supervisor) y 3 (usuario) solicitan la eliminación
  * La tropa entra en estado 'pendiente_eliminacion'
  */
 exports.solicitarEliminacion = async (req, res) => {
@@ -13,9 +56,9 @@ exports.solicitarEliminacion = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (rolUsuario !== 3) {
+  if (![1, 2, 3].includes(Number(rolUsuario))) {
     return res.status(403).json({
-      error: 'Solo usuarios (rol 3) pueden solicitar eliminación de tropas',
+      error: 'Solo usuarios con rol 1, 2 o 3 pueden solicitar eliminación de tropas',
     });
   }
 
@@ -30,7 +73,12 @@ exports.solicitarEliminacion = async (req, res) => {
 
     // 1. Verificar que la tropa existe y está activa
     const tropaRes = await client.query(
-      `SELECT id_tropa, n_tropa, estado FROM tropa WHERE id_tropa = $1`,
+      `SELECT t.id_tropa, t.n_tropa, t.estado, t.dte_dtu, t.guia_policial,
+              pr.nombre AS productor_nombre, tf.nombre AS titular_faena_nombre
+       FROM tropa t
+       LEFT JOIN productor pr ON pr.id_productor = t.id_productor
+       LEFT JOIN titular_faena tf ON tf.id_titular_faena = t.id_titular_faena
+       WHERE t.id_tropa = $1`,
       [parseInt(tropaId, 10)]
     );
 
@@ -39,7 +87,14 @@ exports.solicitarEliminacion = async (req, res) => {
       return res.status(404).json({ error: 'Tropa no encontrada' });
     }
 
-    const { n_tropa, estado } = tropaRes.rows[0];
+    const {
+      n_tropa,
+      estado,
+      dte_dtu,
+      guia_policial,
+      productor_nombre,
+      titular_faena_nombre,
+    } = tropaRes.rows[0];
 
     if (estado !== 'activa') {
       await client.query('ROLLBACK');
@@ -65,6 +120,10 @@ exports.solicitarEliminacion = async (req, res) => {
 
     const cantFaenas = parseInt(faenasRes.rows[0].count, 10);
     const cantDecomisos = parseInt(decomisoRes.rows[0].count, 10);
+    const resumenAnimales = await obtenerResumenAnimalesTropa(
+      client,
+      parseInt(tropaId, 10),
+    );
 
     // 3. Actualizar estado de la tropa
     await client.query(
@@ -89,6 +148,11 @@ exports.solicitarEliminacion = async (req, res) => {
         usuarioId,
         rolUsuario,
         JSON.stringify({
+          dte_dtu,
+          guia_policial,
+          productor: productor_nombre,
+          titular_faena: titular_faena_nombre,
+          resumen_animales: resumenAnimales,
           motivo: motivo || 'Sin especificar',
           faenas_asociadas: cantFaenas,
           decomisos_asociados: cantDecomisos,
@@ -123,8 +187,8 @@ exports.solicitarEliminacion = async (req, res) => {
  */
 exports.confirmarEliminacion = async (req, res) => {
   const { tropaId } = req.params;
-  const usuarioId = req.usuario?.id_usuario || req.usuario?.id;
-  const rolUsuario = req.usuario?.id_rol || req.usuario?.rol;
+  const usuarioId = req.user?.id_usuario;
+  const rolUsuario = req.user?.rol;
 
   // Validar rol
   if (rolUsuario !== 1) {
@@ -144,9 +208,14 @@ exports.confirmarEliminacion = async (req, res) => {
 
     // 1. Verificar que la tropa existe y está pendiente
     const tropaRes = await client.query(
-      `SELECT id_tropa, n_tropa, estado, usuario_solicita_eliminacion, 
-              fecha_solicita_eliminacion, motivo_eliminacion
-       FROM tropa WHERE id_tropa = $1`,
+          `SELECT t.id_tropa, t.n_tropa, t.estado, t.usuario_solicita_eliminacion,
+            t.fecha_solicita_eliminacion, t.motivo_eliminacion, t.dte_dtu,
+            t.guia_policial, pr.nombre AS productor_nombre,
+            tf.nombre AS titular_faena_nombre
+           FROM tropa t
+           LEFT JOIN productor pr ON pr.id_productor = t.id_productor
+           LEFT JOIN titular_faena tf ON tf.id_titular_faena = t.id_titular_faena
+           WHERE t.id_tropa = $1`,
       [parseInt(tropaId, 10)]
     );
 
@@ -161,6 +230,13 @@ exports.confirmarEliminacion = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(400).json({
         error: `La tropa no está en estado pendiente. Estado actual: ${tropaData.estado}`,
+      });
+    }
+
+    if (String(tropaData.usuario_solicita_eliminacion) === String(usuarioId)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error: 'Otro administrador debe confirmar esta solicitud',
       });
     }
 
@@ -187,6 +263,10 @@ exports.confirmarEliminacion = async (req, res) => {
     const cantDetalle = parseInt(detalleRes.rows[0].count, 10);
     const cantFaenas = parseInt(faenasRes.rows[0].count, 10);
     const cantDecomisos = parseInt(decomisoRes.rows[0].count, 10);
+    const resumenAnimales = await obtenerResumenAnimalesTropa(
+      client,
+      parseInt(tropaId, 10),
+    );
 
     // 3. Eliminar FAENA (esto cascara y elimina FAENA_DETALLE, DECOMISO, etc.)
     // Nota: Gracias a ON DELETE CASCADE, esto elimina automáticamente todas las cascadas
@@ -219,6 +299,11 @@ exports.confirmarEliminacion = async (req, res) => {
         usuarioId,
         rolUsuario,
         JSON.stringify({
+          dte_dtu: tropaData.dte_dtu,
+          guia_policial: tropaData.guia_policial,
+          productor: tropaData.productor_nombre,
+          titular_faena: tropaData.titular_faena_nombre,
+          resumen_animales: resumenAnimales,
           solicitada_por: tropaData.usuario_solicita_eliminacion,
           fecha_solicitud: tropaData.fecha_solicita_eliminacion,
           motivo_solicitud: tropaData.motivo_eliminacion,
@@ -258,7 +343,7 @@ exports.confirmarEliminacion = async (req, res) => {
  * Solo para rol 1 (admin)
  */
 exports.obtenerPendientes = async (req, res) => {
-  const rolUsuario = req.usuario?.id_rol || req.usuario?.rol;
+  const rolUsuario = req.user?.rol;
 
   // Validar rol
   if (rolUsuario !== 1) {
@@ -315,7 +400,7 @@ exports.obtenerPendientes = async (req, res) => {
  */
 exports.obtenerHistorialAuditoria = async (req, res) => {
   const { tropaId } = req.params;
-  const rolUsuario = req.usuario?.id_rol || req.usuario?.rol;
+  const rolUsuario = req.user?.rol;
 
   // Validar rol
   if (rolUsuario !== 1) {
@@ -363,8 +448,8 @@ exports.obtenerHistorialAuditoria = async (req, res) => {
 exports.cancelarSolicitud = async (req, res) => {
   const { tropaId } = req.params;
   const { motivo_rechazo = '' } = req.body;
-  const usuarioId = req.usuario?.id_usuario || req.usuario?.id;
-  const rolUsuario = req.usuario?.id_rol || req.usuario?.rol;
+  const usuarioId = req.user?.id_usuario;
+  const rolUsuario = req.user?.rol;
 
   // Validar rol
   if (rolUsuario !== 1) {

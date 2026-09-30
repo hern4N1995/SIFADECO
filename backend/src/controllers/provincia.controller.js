@@ -63,6 +63,13 @@ const agregarProvincia = async (req, res) => {
     
     // Manejo específico de errores
     if (error.code === '23505') {
+      if (error.constraint === 'provincia_pkey') {
+        return res.status(500).json({
+          error: 'La secuencia de IDs de provincias está desincronizada. Ejecuta la migración de sincronización de secuencias.',
+          code: 'PROVINCIA_SEQUENCE_OUT_OF_SYNC',
+        });
+      }
+
       // UNIQUE constraint violation
       return res.status(400).json({ 
         error: 'Esta provincia ya existe',
@@ -71,6 +78,13 @@ const agregarProvincia = async (req, res) => {
     }
     
     if (error.code === '23502') {
+      if (error.column === 'id_provincia') {
+        return res.status(500).json({
+          error: 'La columna id_provincia no tiene un generador de IDs configurado. Ejecuta la migración de secuencias.',
+          code: 'PROVINCIA_ID_DEFAULT_MISSING',
+        });
+      }
+
       // NOT NULL constraint violation
       return res.status(400).json({ 
         error: 'El campo descripción es obligatorio',

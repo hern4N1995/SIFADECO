@@ -268,10 +268,11 @@ export default function ParteDecomisadaAdmin() {
     // Validar duplicado (normalizar comparación)
     const nombreNorm = String(form.nombre_parte).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const tipoNorm = String(form.id_tipo_parte_deco);
-    const existeDuplicado = partes.some((p) => {
+    const existeDuplicado = lista.some((p) => {
       const pNombreNorm = (p.nombre_parte || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const pTipo = String(p.id_tipo_parte_deco || '');
-      return pNombreNorm === nombreNorm && pTipo === tipoNorm && p.id_parte !== editandoId;
+      const pId = p.id_parte_decomisada ?? p.id;
+      return pNombreNorm === nombreNorm && pTipo === tipoNorm && String(pId) !== String(editandoId);
     });
 
     if (existeDuplicado) {
