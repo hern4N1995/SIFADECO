@@ -507,12 +507,65 @@ const actualizarDecomiso = async (req, res) => {
   }
 };
 
+const eliminarDecomiso = async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'ID de decomiso inválido' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const decomisoResult = await client.query(
+      `SELECT fecha_decomiso
+       FROM decomiso
+       WHERE id_decomiso = $1
+       FOR UPDATE`,
+      [id],
+    );
+    if (decomisoResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Decomiso no encontrado' });
+    }
+
+    const fechaOriginalDate = new Date(decomisoResult.rows[0].fecha_decomiso);
+    const diffDays = (new Date() - fechaOriginalDate) / (1000 * 60 * 60 * 24);
+    if (diffDays > 7) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error: 'El período de edición de 7 días ha expirado para este decomiso',
+      });
+    }
+
+    const detallesEliminados = await client.query(
+      'DELETE FROM decomiso_detalle WHERE id_decomiso = $1',
+      [id],
+    );
+    await client.query('DELETE FROM decomiso WHERE id_decomiso = $1', [id]);
+
+    await client.query('COMMIT');
+    res.json({
+      message: 'Decomiso eliminado correctamente',
+      id_decomiso: Number(id),
+      detalles_eliminados: detallesEliminados.rowCount,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error al eliminar decomiso:', error.message);
+    res.status(500).json({ error: 'Error al eliminar decomiso' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   obtenerCombinaciones,
   obtenerDatosBaseDecomiso,
   obtenerInfoFaenaPorDecomiso,
   registrarDecomiso,
   actualizarDecomiso,
+  eliminarDecomiso,
   obtenerResumenDecomiso,
   listarDecomisos,
 };

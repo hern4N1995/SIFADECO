@@ -633,6 +633,7 @@ const DecomisosCargadosPage = () => {
 
     // Filtrar detalles no eliminados para validaciones y envío
     const detallesActivos = (editingDecomiso.detalles || []).filter((det) => !det.isDeleted);
+    const eliminarDecomisoCompleto = detallesActivos.length === 0;
 
     const totalAnimalesAfectados = detallesActivos.reduce((sum, det) => {
       const animales = det.animales_afectados != null ? Number(String(det.animales_afectados).trim()) : 0;
@@ -690,8 +691,24 @@ const DecomisosCargadosPage = () => {
       return;
     }
 
+    if (
+      eliminarDecomisoCompleto &&
+      !window.confirm('No quedan detalles activos. ¿Deseas eliminar el decomiso completo?')
+    ) {
+      return;
+    }
+
     setEditSaving(true);
     try {
+      if (eliminarDecomisoCompleto) {
+        await api.delete(`/decomisos/${editingDecomiso.id_decomiso}`);
+        setDecomisos((prev) =>
+          prev.filter((d) => d.id_decomiso !== editingDecomiso.id_decomiso),
+        );
+        closeEditModal();
+        return;
+      }
+
       const res = await api.put(
         `/decomisos/${editingDecomiso.id_decomiso}`,
         detallesPayload,
@@ -1089,6 +1106,11 @@ const DecomisosCargadosPage = () => {
 
               <div>
                 <p className="font-semibold text-slate-900 mb-3">Detalles del decomiso</p>
+                {(editingDecomiso.detalles || []).filter((det) => !det.isDeleted).length === 0 && (
+                  <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                    No quedan detalles activos. Al guardar se eliminará el decomiso completo.
+                  </p>
+                )}
                 <div className="space-y-4">
                   {(editingDecomiso.detalles || []).filter((det) => !det.isDeleted).map((det, detIdx) => {
                     const isNewDetail = det.isNewDetail;
@@ -1268,10 +1290,16 @@ const DecomisosCargadosPage = () => {
                   className={`rounded-full px-5 py-3 text-sm font-semibold text-white transition ${
                     editSaving
                       ? 'bg-slate-400 cursor-not-allowed'
-                      : 'bg-green-700 hover:bg-green-800'
+                      : (editingDecomiso.detalles || []).filter((det) => !det.isDeleted).length === 0
+                        ? 'bg-red-700 hover:bg-red-800'
+                        : 'bg-green-700 hover:bg-green-800'
                   }`}
                 >
-                  {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                  {editSaving
+                    ? 'Guardando...'
+                    : (editingDecomiso.detalles || []).filter((det) => !det.isDeleted).length === 0
+                      ? 'Eliminar decomiso'
+                      : 'Guardar cambios'}
                 </button>
               </div>
             </div>

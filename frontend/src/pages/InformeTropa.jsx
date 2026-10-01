@@ -3,9 +3,10 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { formatDateFromDB } from '../utils/dateFormatter';
 
-export default function InformeTropa() {
+export default function InformeTropa({ tropaId: tropaIdProp, embedded = false }) {
   const params = useParams();
   let tropaId =
+    tropaIdProp ??
     params?.tropaId ??
     params?.id ??
     params?.tropa_id ??
@@ -123,12 +124,14 @@ export default function InformeTropa() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-10">
+    <div className={embedded ? 'bg-white px-4 py-4 sm:px-6' : 'min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8'}>
+      <div className={`max-w-5xl mx-auto ${embedded ? 'space-y-6' : 'space-y-10'}`}>
         {/* Título principal */}
-        <h1 className="text-3xl font-bold text-gray-800 text-center">
-          📄 Informe de Tropa
-        </h1>
+        {!embedded && (
+          <h1 className="text-3xl font-bold text-gray-800 text-center">
+            📄 Informe de Tropa
+          </h1>
+        )}
 
         {/* Datos generales */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

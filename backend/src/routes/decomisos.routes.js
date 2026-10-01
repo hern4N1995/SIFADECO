@@ -7,6 +7,7 @@ const {
   obtenerInfoFaenaPorDecomiso,
   registrarDecomiso,
   actualizarDecomiso,
+  eliminarDecomiso,
   obtenerDatosBaseDecomiso, // ✅ nuevo controlador
   obtenerResumenDecomiso,
   listarDecomisos,
@@ -42,5 +43,6 @@ router.post('/', verificarToken, permitirRoles(1, 2, 3), registrarDecomiso);
 
 // 📝 Actualizar decomiso cargado (edición dentro de 7 días)
 router.put('/:id', verificarToken, permitirRoles(1, 2, 3), actualizarDecomiso);
+router.delete('/:id', verificarToken, permitirRoles(1, 2, 3), eliminarDecomiso);
 
 module.exports = router;

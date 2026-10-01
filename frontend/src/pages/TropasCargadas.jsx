@@ -4,7 +4,10 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
-import api from '../services/api.js';import { formatDateFromDB } from '../utils/dateFormatter';
+import api from '../services/api.js';
+import { formatDateFromDB } from '../utils/dateFormatter';
+import InformeTropa from './InformeTropa';
+import ModalAccessible from '../components/ModalAccessible';
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 ' +
   'focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -145,6 +148,7 @@ export default function TropasCargadas() {
   
   // Estado para modal de eliminación
   const [modalEliminar, setModalEliminar] = useState(null);
+  const [tropaResumenId, setTropaResumenId] = useState(null);
   const [motivoEliminacion, setMotivoEliminacion] = useState('');
 
   const navigate = useNavigate();
@@ -483,10 +487,7 @@ export default function TropasCargadas() {
           ✏️ Modificar
         </button>
         <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
-          }}
+          onClick={() => setTropaResumenId(tropa.id_tropa)}
           className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"
         >
           📄 Resumen
@@ -939,6 +940,27 @@ export default function TropasCargadas() {
               )}
             </div>
           </div>
+        )}
+
+        {tropaResumenId && (
+          <ModalAccessible onClose={() => setTropaResumenId(null)}>
+            <section className="mx-auto w-full max-w-5xl bg-white rounded-xl shadow-xl ring-1 ring-slate-200">
+              <header className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b border-slate-200">
+                <h2 className="text-base sm:text-lg font-bold text-slate-800">
+                  Resumen de tropa
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setTropaResumenId(null)}
+                  className="rounded-md px-3 py-2 text-slate-600 hover:bg-slate-100"
+                  aria-label="Cerrar resumen"
+                >
+                  Cerrar
+                </button>
+              </header>
+              <InformeTropa tropaId={tropaResumenId} embedded />
+            </section>
+          </ModalAccessible>
         )}
       </div>
     </div>
