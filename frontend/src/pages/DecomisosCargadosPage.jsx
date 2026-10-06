@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
+import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(window.matchMedia(query).matches);
@@ -158,6 +159,7 @@ const DecomisosCargadosPage = () => {
 
   // Referencia al contenedor del modal para scroll automático
   const editModalContentRef = React.useRef(null);
+  const tableScrollRef = React.useRef(null);
 
   // Scroll al top cuando aparezcan errores
   React.useEffect(() => {
@@ -1329,7 +1331,7 @@ const DecomisosCargadosPage = () => {
             </div>
           ) : (
             <div className="w-full max-w-full">
-              <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
+              <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table className="min-w-[900px] w-full text-sm text-center text-slate-700">
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
                     <tr>
@@ -1445,6 +1447,7 @@ const DecomisosCargadosPage = () => {
                   </tbody>
                 </table>
               </div>
+              <FloatingHorizontalScrollbar scrollContainerRef={tableScrollRef} />
             </div>
           )}
 

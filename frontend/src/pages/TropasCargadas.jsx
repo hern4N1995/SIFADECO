@@ -8,6 +8,7 @@ import api from '../services/api.js';
 import { formatDateFromDB } from '../utils/dateFormatter';
 import InformeTropa from './InformeTropa';
 import ModalAccessible from '../components/ModalAccessible';
+import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 ' +
   'focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -129,6 +130,7 @@ function SelectField({
 }
 
 export default function TropasCargadas() {
+  const tableScrollRef = useRef(null);
   const [allTropas, setAllTropas] = useState([]);
   const [tropas, setTropas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -648,7 +650,7 @@ export default function TropasCargadas() {
           <>
             {/* Desktop: tabla */}
             <div className="hidden sm:block">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
+              <div ref={tableScrollRef} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
                 <table
                   style={{ minWidth: 0, width: '100%' }}
                   className="min-w-full text-xs sm:text-sm text-gray-700"
@@ -707,6 +709,7 @@ export default function TropasCargadas() {
                   </tbody>
                 </table>
               </div>
+              <FloatingHorizontalScrollbar scrollContainerRef={tableScrollRef} />
             </div>
 
             {/* Mobile: cards */}

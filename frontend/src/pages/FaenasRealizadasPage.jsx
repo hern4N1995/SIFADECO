@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
+import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 /* SelectField compatible con TropaForm (react-select) */
 function SelectField({
@@ -112,6 +113,7 @@ const EDICION_FAENA_VENTANA_HORAS = 120;
 const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
 
 export default function FaenasRealizadasPage() {
+  const tableScrollRef = useRef(null);
   const [faenas, setFaenas] = useState([]);
   const [filtro, setFiltro] = useState({ desde: '', hasta: '', n_tropa: '' });
   const [loading, setLoading] = useState(true);
@@ -697,6 +699,7 @@ export default function FaenasRealizadasPage() {
         <>
           <div className="hidden md:block w-full">
             <div
+              ref={tableScrollRef}
               className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 mx-auto max-w-7xl"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
@@ -773,6 +776,7 @@ export default function FaenasRealizadasPage() {
                 </tbody>
               </table>
             </div>
+            <FloatingHorizontalScrollbar scrollContainerRef={tableScrollRef} />
           </div>
 
           <div className="md:hidden grid gap-4 mt-6">

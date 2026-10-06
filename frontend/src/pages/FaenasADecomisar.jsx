@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { formatDateFromDB } from '../utils/dateFormatter';
+import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 /* SelectField compatible con react-select */
 function SelectField({
@@ -109,6 +110,7 @@ const useMediaQuery = (query) => {
 };
 
 export default function FaenasADecomisar() {
+  const tableScrollRef = useRef(null);
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
@@ -947,7 +949,7 @@ export default function FaenasADecomisar() {
             </div>
           ) : (
             <div className="w-full max-w-full">
-              <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
+              <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table
                   className="w-full min-w-[1100px] text-sm text-center text-slate-700"
                   style={{ tableLayout: 'auto' }}
@@ -1032,6 +1034,7 @@ export default function FaenasADecomisar() {
                   </tbody>
                 </table>
               </div>
+              <FloatingHorizontalScrollbar scrollContainerRef={tableScrollRef} />
             </div>
           )}
 

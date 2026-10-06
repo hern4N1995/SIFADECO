@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(
@@ -146,6 +147,7 @@ const FaenaPage = () => {
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
   const navigate = useNavigate();
+  const tableScrollRef = useRef(null);
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
@@ -780,7 +782,7 @@ const FaenaPage = () => {
         </div>
       ) : (
         <div className="flex justify-center px-2 sm:px-4 w-full box-border">
-          <div className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
+          <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
             <table className="w-full table-auto text-sm text-center text-slate-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                 <tr>
@@ -841,6 +843,7 @@ const FaenaPage = () => {
               </tbody>
             </table>
           </div>
+          <FloatingHorizontalScrollbar scrollContainerRef={tableScrollRef} />
         </div>
       )}
 
