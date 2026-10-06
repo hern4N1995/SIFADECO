@@ -30,3 +30,14 @@
     -webkit-text-security: disc;
   }
 }
+
+@media (min-width: 768px) {
+  .floating-horizontal-scroll-container {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .floating-horizontal-scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+}

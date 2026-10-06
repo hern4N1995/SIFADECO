@@ -949,7 +949,7 @@ export default function FaenasADecomisar() {
             </div>
           ) : (
             <div className="w-full max-w-full">
-              <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
+              <div ref={tableScrollRef} className="floating-horizontal-scroll-container w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table
                   className="w-full min-w-[1100px] text-sm text-center text-slate-700"
                   style={{ tableLayout: 'auto' }}

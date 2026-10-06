@@ -782,7 +782,7 @@ const FaenaPage = () => {
         </div>
       ) : (
         <div className="flex justify-center px-2 sm:px-4 w-full box-border">
-          <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
+          <div ref={tableScrollRef} className="floating-horizontal-scroll-container w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
             <table className="w-full table-auto text-sm text-center text-slate-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                 <tr>

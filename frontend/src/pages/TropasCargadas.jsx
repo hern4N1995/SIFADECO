@@ -650,7 +650,7 @@ export default function TropasCargadas() {
           <>
             {/* Desktop: tabla */}
             <div className="hidden sm:block">
-              <div ref={tableScrollRef} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
+              <div ref={tableScrollRef} className="floating-horizontal-scroll-container bg-white rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
                 <table
                   style={{ minWidth: 0, width: '100%' }}
                   className="min-w-full text-xs sm:text-sm text-gray-700"

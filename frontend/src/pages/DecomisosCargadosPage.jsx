@@ -1331,7 +1331,7 @@ const DecomisosCargadosPage = () => {
             </div>
           ) : (
             <div className="w-full max-w-full">
-              <div ref={tableScrollRef} className="w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
+              <div ref={tableScrollRef} className="floating-horizontal-scroll-container w-full overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
                 <table className="min-w-[900px] w-full text-sm text-center text-slate-700">
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
                     <tr>

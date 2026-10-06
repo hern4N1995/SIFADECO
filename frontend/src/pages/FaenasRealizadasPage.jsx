@@ -700,7 +700,7 @@ export default function FaenasRealizadasPage() {
           <div className="hidden md:block w-full">
             <div
               ref={tableScrollRef}
-              className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 mx-auto max-w-7xl"
+              className="floating-horizontal-scroll-container overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 mx-auto max-w-7xl"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <table className="w-full text-xs text-center text-slate-700">
