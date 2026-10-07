@@ -659,7 +659,10 @@ export default function TropasCargadas() {
                     <tr>
                       <th className="px-2 sm:px-3 py-2 text-left">N° Tropa</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Fecha</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">Planta</th>
+                      {rol === 1 && (
+                        <th className="px-2 sm:px-3 py-2 text-left">Planta</th>
+                      )}
+                      <th className="px-2 sm:px-3 py-2 text-center">Cant. Tropa</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Productor</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Titular</th>
                       <th className="px-2 sm:px-3 py-2 text-left">DTE/DTU</th>
@@ -688,8 +691,13 @@ export default function TropasCargadas() {
                           <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
                             {formatDateFromDB(tropa.fecha_ingreso)}
                           </td>
-                          <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
-                            {plantaLabel(tropa)}
+                          {rol === 1 && (
+                            <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                              {plantaLabel(tropa)}
+                            </td>
+                          )}
+                          <td className={`px-2 sm:px-3 py-2 text-center tabular-nums ${isPending ? 'line-through text-yellow-700' : ''}`}>
+                            {Number(tropa.cantidad_total) || 0}
                           </td>
                           <td className={`px-2 sm:px-3 py-2 truncate max-w-xs break-words ${isPending ? 'line-through text-yellow-700' : ''}`}>
                             {tropa.productor_nombre || tropa.productor || '—'}
@@ -750,16 +758,32 @@ export default function TropasCargadas() {
                         </div>
                       </div>
 
+                      {rol === 1 && (
+                        <div className="flex items-start space-x-1">
+                          <span className="text-gray-400 text-[11px] mt-0.5">
+                            🏭
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-[11px]">
+                              Planta
+                            </p>
+                            <p className="text-gray-600 text-[11px] truncate">
+                              {plantaLabel(tropa)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-start space-x-1">
                         <span className="text-gray-400 text-[11px] mt-0.5">
-                          �
+                          🐄
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-800 text-[11px]">
-                            Planta
+                            Cantidad de tropa
                           </p>
-                          <p className="text-gray-600 text-[11px] truncate">
-                            {plantaLabel(tropa)}
+                          <p className="text-gray-600 text-[11px] tabular-nums">
+                            {Number(tropa.cantidad_total) || 0}
                           </p>
                         </div>
                       </div>

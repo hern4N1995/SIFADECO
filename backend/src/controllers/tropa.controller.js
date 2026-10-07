@@ -22,7 +22,12 @@ exports.getAll = async (req, res) => {
         pr.nombre AS productor_nombre,
         d.nombre_departamento AS departamento,
         p.id_planta,
-        p.nombre AS planta_nombre
+        p.nombre AS planta_nombre,
+        COALESCE((
+          SELECT SUM(td.cantidad)
+          FROM tropa_detalle td
+          WHERE td.id_tropa = t.id_tropa
+        ), 0)::int AS cantidad_total
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
