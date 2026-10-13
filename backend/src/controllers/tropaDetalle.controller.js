@@ -82,6 +82,140 @@ async function patchDetalle(req, res) {
   return updateDetalle(req, res);
 }
 
+async function updateCategoriaDetalle(req, res) {
+  const tropaId = Number(req.params.tropaId);
+  const especieId = Number(req.params.especieId);
+  const categoriaId = Number(req.params.categoriaId);
+  const remanenteRaw = req.body?.remanente;
+  const remanenteObjetivo = Number(remanenteRaw);
+
+  if (
+    !Number.isInteger(tropaId) ||
+    tropaId <= 0 ||
+    !Number.isInteger(especieId) ||
+    especieId <= 0 ||
+    !Number.isInteger(categoriaId) ||
+    categoriaId <= 0
+  ) {
+    return err(res, 400, 'Identificadores de tropa o categoría inválidos');
+  }
+
+  if (
+    remanenteRaw === undefined ||
+    remanenteRaw === null ||
+    remanenteRaw === '' ||
+    !Number.isSafeInteger(remanenteObjetivo) ||
+    remanenteObjetivo < 0
+  ) {
+    return err(res, 400, 'El remanente debe ser un número entero no negativo');
+  }
+
+  const client = await db.connect();
+  let transactionOpen = false;
+
+  try {
+    await client.query('BEGIN');
+    transactionOpen = true;
+
+    const result = await client.query(
+      `SELECT
+         td.id_tropa_detalle,
+         td.cantidad,
+         COALESCE((
+           SELECT SUM(fd.cantidad_faena)
+           FROM faena_detalle fd
+           WHERE fd.id_tropa_detalle = td.id_tropa_detalle
+         ), 0)::int AS cantidad_faenada
+       FROM tropa_detalle td
+       WHERE td.id_tropa = $1
+         AND td.id_especie = $2
+         AND td.id_cat_especie = $3
+       ORDER BY td.id_tropa_detalle
+       FOR UPDATE OF td`,
+      [tropaId, especieId, categoriaId],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      transactionOpen = false;
+      return err(res, 404, 'No se encontraron animales para esa categoría');
+    }
+
+    const rows = result.rows.map((row) => ({
+      id: row.id_tropa_detalle,
+      cantidad: Number(row.cantidad),
+      faenada: Number(row.cantidad_faenada),
+    }));
+    if (rows.some((row) => row.cantidad < row.faenada)) {
+      await client.query('ROLLBACK');
+      transactionOpen = false;
+      return err(
+        res,
+        409,
+        'Los datos de la categoría son inconsistentes: hay más animales faenados que cargados',
+      );
+    }
+
+    const faenadaTotal = rows.reduce((total, row) => total + row.faenada, 0);
+    const reduccionObjetivo =
+      rows.reduce((total, row) => total + row.cantidad, 0) -
+      (remanenteObjetivo + faenadaTotal);
+
+    if (reduccionObjetivo > 0) {
+      let pendiente = reduccionObjetivo;
+
+      for (const row of rows) {
+        const disponible = row.cantidad - row.faenada;
+        const reducir = Math.min(disponible, pendiente);
+
+        if (reducir > 0) {
+          row.cantidad -= reducir;
+          pendiente -= reducir;
+        }
+      }
+
+      if (pendiente > 0) {
+        await client.query('ROLLBACK');
+        transactionOpen = false;
+        return err(
+          res,
+          409,
+          'No se pudo reducir la cantidad sin modificar animales ya faenados',
+        );
+      }
+    } else if (reduccionObjetivo < 0) {
+      rows[0].cantidad -= reduccionObjetivo;
+    }
+
+    for (const row of rows) {
+      await client.query(
+        'UPDATE tropa_detalle SET cantidad = $1 WHERE id_tropa_detalle = $2',
+        [row.cantidad, row.id],
+      );
+    }
+
+    await client.query('COMMIT');
+    transactionOpen = false;
+
+    return ok(
+      res,
+      {
+        id_tropa: tropaId,
+        id_especie: especieId,
+        id_cat_especie: categoriaId,
+        remanente: remanenteObjetivo,
+      },
+      'Cantidad actualizada',
+    );
+  } catch (e) {
+    if (transactionOpen) await client.query('ROLLBACK');
+    console.error('updateCategoriaDetalle error', e && (e.stack || e));
+    return err(res, 500, 'Error actualizando cantidad de la categoría');
+  } finally {
+    client.release();
+  }
+}
+
 /**
  * Elimina un detalle de tropa (DELETE físico).
  * Si prefieres soft-delete, cambia la consulta a UPDATE estado = false.
@@ -108,4 +242,9 @@ async function deleteDetalle(req, res) {
   }
 }
 
-module.exports = { updateDetalle, patchDetalle, deleteDetalle };
+module.exports = {
+  updateDetalle,
+  patchDetalle,
+  updateCategoriaDetalle,
+  deleteDetalle,
+};

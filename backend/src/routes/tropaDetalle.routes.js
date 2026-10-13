@@ -4,6 +4,7 @@ const router = express.Router({ mergeParams: true }); // mergeParams por si se m
 const {
   updateDetalle,
   patchDetalle,
+  updateCategoriaDetalle,
   deleteDetalle,
 } = require('../controllers/tropaDetalle.controller');
 const { verificarToken } = require('../middleware/auth');
@@ -20,6 +21,8 @@ const { verificarToken } = require('../middleware/auth');
     PUT    /api/tropas/tropa-detalle/:detalleId
     PATCH  /api/tropas/tropa-detalle/:detalleId
     DELETE /api/tropas/tropa-detalle/:detalleId
+
+    PATCH  /api/tropas/tropa-detalle/grupo/:tropaId/:especieId/:categoriaId
 */
 
 /* Rutas con tropaId en la URL (preferidas cuando aplica) */
@@ -28,6 +31,11 @@ router.patch('/:tropaId/detalle/:detalleId', verificarToken, patchDetalle);
 router.delete('/:tropaId/detalle/:detalleId', verificarToken, deleteDetalle);
 
 /* Rutas alternativas planas (útiles para llamadas directas sin tropaId) */
+router.patch(
+  '/tropa-detalle/grupo/:tropaId/:especieId/:categoriaId',
+  verificarToken,
+  updateCategoriaDetalle,
+);
 router.put('/tropa-detalle/:detalleId', verificarToken, updateDetalle);
 router.patch('/tropa-detalle/:detalleId', verificarToken, patchDetalle);
 router.delete('/tropa-detalle/:detalleId', verificarToken, deleteDetalle);

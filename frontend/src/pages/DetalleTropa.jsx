@@ -551,6 +551,7 @@ export default function DetalleTropa() {
     id_cat_especie: '',
     remanente: '',
     id_especie: null,
+    especie: '',
     selectedCategory: null,
     selectKey: undefined,
   });
@@ -1365,6 +1366,7 @@ export default function DetalleTropa() {
       id_cat_especie: currentCategoryStr,
       remanente: String(item.cantidad ?? item.remanente ?? 0),
       id_especie: especieId ?? null,
+      especie: item.especie ?? '',
       selectedCategory: selectedObj,
       selectKey: selectKeyForThisEdit,
     });
@@ -1376,6 +1378,7 @@ export default function DetalleTropa() {
       id_cat_especie: '',
       remanente: '',
       id_especie: null,
+      especie: '',
       selectedCategory: null,
       selectKey: undefined,
     });
@@ -1398,6 +1401,48 @@ export default function DetalleTropa() {
     const newCantidad = Number(editing.remanente || 0);
 
     try {
+      if (
+        newCat !== undefined &&
+        String(newCat) === String(editing.id_cat_especie)
+      ) {
+        const especieId =
+          editing.id_especie ??
+          detalle.categorias.find(
+            (categoria) =>
+              String(categoria.id_cat_especie) === String(newCat) &&
+              (!editing.especie ||
+                String(categoria.especie) === String(editing.especie))
+          )?.id_especie;
+
+        if (especieId == null) {
+          showToast('error', 'No se pudo identificar la especie de la categoría.');
+          return;
+        }
+
+        try {
+          await api.patch(
+            `/tropas/tropa-detalle/grupo/${id}/${especieId}/${newCat}`,
+            { remanente: newCantidad },
+            { headers: getTokenHeaders() }
+          );
+          showToast('success', 'Cantidad actualizada.');
+          cancelEdit();
+          await fetchDetalleAgrupado();
+          return;
+        } catch (eUpdate) {
+          console.error(
+            'No se pudo actualizar el total de la categoría',
+            eUpdate
+          );
+          showToast(
+            'error',
+            eUpdate?.response?.data?.error ||
+              'No se pudo actualizar la cantidad de la categoría.'
+          );
+          return;
+        }
+      }
+
       const original =
         detalle.categorias.find((c) => {
           // direct ids on the grouped row
@@ -1658,7 +1703,7 @@ export default function DetalleTropa() {
               headers: getTokenHeaders(),
             }
           );
-          showToast('success', 'Cantidad reemplazada.');
+          showToast('success', 'Cantidad actualizada.');
           cancelEdit();
           await fetchDetalleAgrupado();
           return;
@@ -1671,7 +1716,7 @@ export default function DetalleTropa() {
                 headers: getTokenHeaders(),
               }
             );
-            showToast('success', 'Cantidad reemplazada.');
+            showToast('success', 'Cantidad actualizada.');
             cancelEdit();
             await fetchDetalleAgrupado();
             return;
