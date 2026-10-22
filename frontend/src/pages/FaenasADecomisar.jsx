@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { formatDateFromDB } from '../utils/dateFormatter';
+import { isPlainLeftClick } from '../utils/navigation';
 import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 /* SelectField compatible con react-select */
@@ -303,6 +304,11 @@ export default function FaenasADecomisar() {
     navigate(`/decomisos/nuevo/${f.id_faena}`);
   };
 
+  // Solo marcamos "Redirigiendo..." si la navegación ocurre en esta pestaña
+  const handleDecomisarClick = (e, f) => {
+    if (isPlainLeftClick(e)) setRedirigiendoId(f.id_faena);
+  };
+
   const handlePreview = async (f) => {
     try {
       console.log('[FaenasADecomisar] Cargando detalles de faena:', f.id_faena);
@@ -585,17 +591,18 @@ export default function FaenasADecomisar() {
         >
           Ver
         </button>
-        <button
-          onClick={() => handleDecomisar(f)}
-          disabled={redirigiendoId === f.id_faena}
-          className={`text-sm px-3 py-2 rounded font-semibold transition ${
+        <Link
+          to={`/decomisos/nuevo/${f.id_faena}`}
+          onClick={(e) => handleDecomisarClick(e, f)}
+          aria-disabled={redirigiendoId === f.id_faena}
+          className={`inline-block text-sm px-3 py-2 rounded font-semibold transition ${
             redirigiendoId === f.id_faena
-              ? 'bg-green-300 text-white cursor-not-allowed'
+              ? 'bg-green-300 text-white cursor-not-allowed pointer-events-none'
               : 'bg-green-700 text-white hover:bg-green-800'
           }`}
         >
           {redirigiendoId === f.id_faena ? 'Redirigiendo...' : 'Decomisar'}
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -1014,19 +1021,20 @@ export default function FaenasADecomisar() {
                             >
                               Ver
                             </button>
-                            <button
-                              onClick={() => handleDecomisar(f)}
-                              disabled={redirigiendoId === f.id_faena}
-                              className={`text-xs px-3 py-1 rounded font-semibold transition ${
+                            <Link
+                              to={`/decomisos/nuevo/${f.id_faena}`}
+                              onClick={(e) => handleDecomisarClick(e, f)}
+                              aria-disabled={redirigiendoId === f.id_faena}
+                              className={`inline-block text-xs px-3 py-1 rounded font-semibold transition ${
                                 redirigiendoId === f.id_faena
-                                  ? 'bg-green-300 text-white cursor-not-allowed'
+                                  ? 'bg-green-300 text-white cursor-not-allowed pointer-events-none'
                                   : 'bg-green-100 text-green-800 hover:bg-green-200'
                               }`}
                             >
                               {redirigiendoId === f.id_faena
                                 ? 'Redirigiendo...'
                                 : 'Decomisar'}
-                            </button>
+                            </Link>
                           </div>
                         </td>
                       </tr>

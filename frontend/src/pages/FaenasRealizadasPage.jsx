@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
@@ -124,7 +124,6 @@ export default function FaenasRealizadasPage() {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
-  const navigate = useNavigate();
 
   const rowsPerPageOptions = [4, 7, 10, 20];
   const sortOptions = [
@@ -298,14 +297,6 @@ export default function FaenasRealizadasPage() {
     const fecha = parseFaenaDate(fechaFaena);
     if (!fecha) return false;
     return Date.now() <= fecha.getTime() + EDICION_FAENA_VENTANA_MS;
-  };
-
-  const handleDecomisar = (event, id_faena) => {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    navigate(`/decomisos/nuevo/${id_faena}`);
   };
 
   const handleVerDetalle = async (id_faena) => {
@@ -763,12 +754,13 @@ export default function FaenasRealizadasPage() {
                           >
                             Modificar
                           </button>
-                          <button
-                            onClick={(e) => handleDecomisar(e, f.id_faena)}
-                            className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
+                          <Link
+                            to={`/decomisos/nuevo/${f.id_faena}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-block text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
                           >
                             Decomisar
-                          </button>
+                          </Link>
                         </div>
                       </td>
                     </tr>
@@ -850,12 +842,12 @@ export default function FaenasRealizadasPage() {
                   >
                     Modificar
                   </button>
-                  <button
-                    onClick={(e) => handleDecomisar(e, f.id_faena)}
-                    className="text-sm px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition"
+                  <Link
+                    to={`/decomisos/nuevo/${f.id_faena}`}
+                    className="inline-block text-sm px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition"
                   >
                     Decomisar
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
@@ -153,7 +153,6 @@ const DecomisosCargadosPage = () => {
   const [partes, setPartes] = useState([]);
   const [afecciones, setAfecciones] = useState([]);
 
-  const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : 6;
 
@@ -511,11 +510,6 @@ const DecomisosCargadosPage = () => {
     setEditingDecomiso(null);
     setEditErrors([]);
     setEditSaving(false);
-  };
-
-  const handleVerResumen = (id) => {
-    console.log('[DecomisosCargadosPage] Navigating to resumen con id:', id);
-    navigate(`/decomisos/detalle/${id}`);
   };
 
   function plantaLabel(d) {
@@ -903,12 +897,12 @@ const DecomisosCargadosPage = () => {
             Editar
           </button>
         )}
-        <button
-          onClick={() => handleVerResumen(d.id_decomiso)}
-          className="px-4 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow text-sm"
+        <Link
+          to={`/decomisos/detalle/${d.id_decomiso}`}
+          className="inline-block px-4 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow text-sm"
         >
           Ver resumen
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -1384,15 +1378,13 @@ const DecomisosCargadosPage = () => {
                                   Editar
                                 </button>
                               )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleVerResumen(d.id_decomiso);
-                                }}
-                                className="px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
+                              <Link
+                                to={`/decomisos/detalle/${d.id_decomiso}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-block px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
                               >
                                 Ver resumen
-                              </button>
+                              </Link>
                             </td>
                           </tr>
 

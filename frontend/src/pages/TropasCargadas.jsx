@@ -2,10 +2,11 @@
 // Mantiene filtros, tabla/cards y SelectField con apariencia consistente
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api.js';
 import { formatDateFromDB } from '../utils/dateFormatter';
+import { isPlainLeftClick } from '../utils/navigation';
 import InformeTropa from './InformeTropa';
 import ModalAccessible from '../components/ModalAccessible';
 import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
@@ -153,7 +154,6 @@ export default function TropasCargadas() {
   const [tropaResumenId, setTropaResumenId] = useState(null);
   const [motivoEliminacion, setMotivoEliminacion] = useState('');
 
-  const navigate = useNavigate();
   const debounceRef = useRef(null);
 
   // Obtener rol y planta del usuario desde localStorage
@@ -474,20 +474,24 @@ export default function TropasCargadas() {
     
     return (
       <div className="flex items-center justify-center gap-2">
-        <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
-          }}
-          disabled={isPending}
-          className={`px-3 py-1.5 rounded-md text-sm transition ${
-            isPending 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'bg-green-50 hover:bg-green-100 text-green-700'
-          }`}
-        >
-          ✏️ Modificar
-        </button>
+        {isPending ? (
+          <button
+            disabled
+            className="px-3 py-1.5 rounded-md text-sm transition bg-gray-100 text-gray-400 cursor-not-allowed"
+          >
+            ✏️ Modificar
+          </button>
+        ) : (
+          <Link
+            to={`/tropas-cargadas/modificar/${tropa.id_tropa}`}
+            onClick={(e) => {
+              if (isPlainLeftClick(e)) window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="inline-block px-3 py-1.5 rounded-md text-sm transition bg-green-50 hover:bg-green-100 text-green-700"
+          >
+            ✏️ Modificar
+          </Link>
+        )}
         <button
           onClick={() => setTropaResumenId(tropa.id_tropa)}
           className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"

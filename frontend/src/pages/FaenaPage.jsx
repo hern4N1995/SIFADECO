@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Select from 'react-select';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { isPlainLeftClick } from '../utils/navigation';
 import FloatingHorizontalScrollbar from '../components/FloatingHorizontalScrollbar';
 
 const useMediaQuery = (query) => {
@@ -146,7 +147,6 @@ const FaenaPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
-  const navigate = useNavigate();
   const tableScrollRef = useRef(null);
 
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -398,12 +398,12 @@ const FaenaPage = () => {
     };
   }, [rol, plantaDelUsuario]);
 
-  const handleFaenar = (t) => {
-    setRedirigiendoId(t.id_tropa);
-    const destino = t.id_faena
-      ? `/faena/${t.id_faena}`
-      : `/faena/nueva/${t.id_tropa}`;
-    navigate(destino);
+  const faenarPath = (t) =>
+    t.id_faena ? `/faena/${t.id_faena}` : `/faena/nueva/${t.id_tropa}`;
+
+  // Solo marcamos "Redirigiendo..." si la navegación ocurre en esta pestaña
+  const handleFaenarClick = (e, t) => {
+    if (isPlainLeftClick(e)) setRedirigiendoId(t.id_tropa);
   };
 
   const formatDate = (f) => {
@@ -573,17 +573,18 @@ const FaenaPage = () => {
         </p>
       </div>
       <div className="mt-4 flex justify-end">
-        <button
-          onClick={() => handleFaenar(t)}
-          disabled={redirigiendoId === t.id_tropa}
-          className={`text-sm px-3 py-2 rounded font-semibold transition ${
+        <Link
+          to={faenarPath(t)}
+          onClick={(e) => handleFaenarClick(e, t)}
+          aria-disabled={redirigiendoId === t.id_tropa}
+          className={`inline-block text-sm px-3 py-2 rounded font-semibold transition ${
             redirigiendoId === t.id_tropa
-              ? 'bg-green-300 text-white cursor-not-allowed'
+              ? 'bg-green-300 text-white cursor-not-allowed pointer-events-none'
               : 'bg-green-700 text-white hover:bg-green-800'
           }`}
         >
           {redirigiendoId === t.id_tropa ? 'Redirigiendo...' : 'Faenar'}
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -824,19 +825,20 @@ const FaenaPage = () => {
                       {t.total_a_faenar ?? '—'}
                     </td>
                     <td className="px-3 py-2">
-                      <button
-                        onClick={() => handleFaenar(t)}
-                        disabled={redirigiendoId === t.id_tropa}
-                        className={`text-xs px-1 py-0.5 rounded font-semibold transition ${
+                      <Link
+                        to={faenarPath(t)}
+                        onClick={(e) => handleFaenarClick(e, t)}
+                        aria-disabled={redirigiendoId === t.id_tropa}
+                        className={`inline-block text-xs px-1 py-0.5 rounded font-semibold transition ${
                           redirigiendoId === t.id_tropa
-                            ? 'bg-green-300 text-white cursor-not-allowed'
+                            ? 'bg-green-300 text-white cursor-not-allowed pointer-events-none'
                             : 'bg-green-100 text-green-800 hover:bg-green-200'
                         }`}
                       >
                         {redirigiendoId === t.id_tropa
                           ? 'Redir...'
                           : 'Faenar'}
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
