@@ -307,7 +307,7 @@ export default function PerfilPage() {
         </div>
 
         {/* Sección de cambio de contraseña (para roles 1, 2 y 3) */}
-        {(usuario.id_rol === 1 || usuario.id_rol === 2 || usuario.id_rol === 3) && (
+        {(usuario.id_rol === 1 || usuario.id_rol === 2 || usuario.id_rol === 3 || usuario.id_rol === 4) && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">
               🔐 Cambiar Contraseña

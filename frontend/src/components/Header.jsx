@@ -4,6 +4,7 @@ import { HiBars3, HiXMark } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoginModal from './LoginModal';
 import { clearAuthStorage } from '../utils/auth';
+import { esAdmin, esSuperAdmin } from '../utils/roles';
 
 export default function Header() {
   const [loginAbierto, setLoginAbierto] = useState(false);
@@ -58,8 +59,9 @@ export default function Header() {
   };
 
   const rol = user?.rol;
-  const isAdmin = rol === 1 || rol === 2;
+  const isAdmin = esAdmin(rol) || rol === 2;
   const isUsuario = rol === 3;
+  const isSuper = esSuperAdmin(rol);
 
   const navLinks = [
     { to: '/inicio', label: 'Inicio', show: true },
@@ -68,6 +70,8 @@ export default function Header() {
     { to: '/decomisos', label: 'Decomisos', show: isAdmin || isUsuario },
     { to: '/informes', label: 'Informes', show: isAdmin || isUsuario },
     { to: '/admin/usuarios', label: 'Admin', show: isAdmin },
+    { to: '/admin/auditoria', label: 'Auditoría', show: isSuper },
+    { to: '/admin/correcciones', label: 'Correcciones', show: isSuper },
   ];
 
   return (

@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import Select from 'react-select';
 import api from '../services/api';
+import { esAdmin } from '../utils/roles';
 import { getDateComponentsFromDB } from '../utils/dateFormatter';
 
 /* ------------------------------------------------------------------ */
@@ -224,7 +225,7 @@ export default function InformesPage() {
           if (!esMesAño) return false;
 
           // Si no es admin, filtrar solo por su planta
-          if (rol !== 1) {
+          if (!esAdmin(rol)) {
             // El usuario no-admin solo ve datos de su planta asignada
             return String(plantaDelUsuario) === String(d.id_planta);
           }
@@ -263,7 +264,7 @@ export default function InformesPage() {
           if (!esMesAño) return;
 
           // Filtrar por planta según rol
-          if (rol !== 1) {
+          if (!esAdmin(rol)) {
             if (String(plantaDelUsuario) !== String(f.id_planta)) return;
           } else if (plantaSeleccionada && plantaSeleccionada !== '') {
             if (String(plantaSeleccionada) !== String(f.id_planta)) return;
@@ -306,7 +307,7 @@ export default function InformesPage() {
           if (!esMesAño) return;
 
           // Filtrar por planta según rol
-          if (rol !== 1) {
+          if (!esAdmin(rol)) {
             if (String(plantaDelUsuario) !== String(detalle.id_planta)) return;
           } else if (plantaSeleccionada && plantaSeleccionada !== '') {
             if (String(plantaSeleccionada) !== String(detalle.id_planta))
@@ -422,7 +423,7 @@ export default function InformesPage() {
   };
 
   const getNombrePlanta = () => {
-    if (rol === 1) {
+    if (esAdmin(rol)) {
       // Admin: mostrar nombre de la planta seleccionada o "Todas"
       if (!plantaSeleccionada || plantaSeleccionada === '') {
         return 'Todas las plantas';
@@ -476,7 +477,7 @@ export default function InformesPage() {
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 no-print">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {/* Planta */}
-            {rol === 1 ? (
+            {esAdmin(rol) ? (
               <SelectField
                 label="Planta"
                 value={

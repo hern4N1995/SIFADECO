@@ -314,7 +314,7 @@ const mapRol = (rol) => {
 
   switch (rol.toLowerCase()) {
     case 'superadmin':
-      return 1;
+      return 4;
     case 'supervisor':
       return 2;
     case 'usuario':

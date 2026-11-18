@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { esAdmin } from '../utils/roles';
 import Select from 'react-select';
 import api from '../services/api';
 import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
@@ -214,7 +215,7 @@ export default function FaenasRealizadasPage() {
       }
 
       // Filtrar por planta del usuario (si no es admin)
-      if (rol !== 1 && plantaDelUsuario) {
+      if (!esAdmin(rol) && plantaDelUsuario) {
         console.log('[FaenasRealizadasPage] Filtrando por planta del usuario:', plantaDelUsuario, 'Tipo:', typeof plantaDelUsuario);
         console.log('[FaenasRealizadasPage] Faenas ANTES de filtrar:', arr.length);
         arr = arr.filter((f) => {
@@ -230,7 +231,7 @@ export default function FaenasRealizadasPage() {
           return match;
         });
         console.log('[FaenasRealizadasPage] Después de filtrar:', arr.length, 'faenas');
-      } else if (rol === 1) {
+      } else if (esAdmin(rol)) {
         console.log('[FaenasRealizadasPage] Admin - mostrando todas las faenas');
       } else {
         console.log('[FaenasRealizadasPage] Warning - Rol no es admin pero no hay plantaDelUsuario. Rol:', rol, 'Planta:', plantaDelUsuario);

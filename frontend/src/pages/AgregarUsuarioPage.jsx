@@ -1002,6 +1002,8 @@ const AgregarUsuarioPage = () => {
                             ? 'Supervisor'
                             : u.id_rol === 1
                             ? 'Super Usuario'
+                            : u.id_rol === 4
+                            ? 'Superadmin'
                             : 'Usuario'}
                         </span>
                       </p>

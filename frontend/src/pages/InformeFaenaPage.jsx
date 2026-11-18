@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { esAdmin } from '../utils/roles';
 import { HiArrowLeft } from 'react-icons/hi2';
 import Select from 'react-select';
 import {
@@ -161,7 +162,7 @@ export default function InformeFaenaPage() {
             const user = JSON.parse(userStr);
             setUser(user);
             const userRol = parseInt(user.rol || 0);
-            if (userRol !== 1 && user.id_planta) {
+            if (!esAdmin(userRol) && user.id_planta) {
               // Non-admin: auto-select their plant
               setIdPlanta(String(user.id_planta));
             }
@@ -206,7 +207,7 @@ export default function InformeFaenaPage() {
       
       // Usar la planta seleccionada en el filtro, o la del usuario si es no-admin y no selecciona nada
       let plantaAFiltrar = idPlanta;
-      if (!plantaAFiltrar && user?.rol !== 1) {
+      if (!plantaAFiltrar && !esAdmin(user?.rol)) {
         // No-admin sin selección: usar su planta asignada
         plantaAFiltrar = String(user?.id_planta || '');
       }
@@ -435,7 +436,7 @@ export default function InformeFaenaPage() {
             />
 
             {/* Planta */}
-            {parseInt(user?.rol || 0) === 1 ? (
+            {esAdmin(user?.rol) ? (
               <SelectField
                 label="Planta"
                 value={
