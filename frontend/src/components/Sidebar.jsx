@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { esSuperAdmin } from '../utils/roles';
 
 export default function Sidebar() {
   const { pathname } = useLocation();
@@ -87,6 +88,8 @@ export default function Sidebar() {
         { to: '/admin/especies', label: 'Especies' },
         { to: '/admin/categorias-especie', label: 'Categorías por Especie' },
         { to: '/admin/tropas-pendientes-eliminacion', label: 'Pendientes de Eliminación', end: true },
+        { to: '/admin/auditoria', label: 'Auditoría', end: true, superOnly: true },
+        { to: '/admin/correcciones', label: 'Correcciones de carga', end: true, superOnly: true },
       ],
     },
   ];
@@ -94,7 +97,7 @@ export default function Sidebar() {
   const match =
     rol &&
     menuConfig.find(
-      ({ prefix, roles }) => pathname.startsWith(prefix) && roles.includes(rol)
+      ({ prefix, roles }) => pathname.startsWith(prefix) && (roles.includes(rol) || esSuperAdmin(rol))
     );
 
   const linkClass = ({ isActive }) =>
@@ -166,7 +169,7 @@ export default function Sidebar() {
                     {match.title}
                   </h2>
                   <nav className="space-y-2">
-                    {match.menu.map(({ to, label, end }) => (
+                    {match.menu.filter(({ superOnly }) => !superOnly || esSuperAdmin(rol)).map(({ to, label, end }) => (
                       <NavLink
                         key={to}
                         to={to}
@@ -190,7 +193,7 @@ export default function Sidebar() {
                 {match.title}
               </h2>
               <nav className="space-y-2">
-                {match.menu.map(({ to, label, end }) => (
+                {match.menu.filter(({ superOnly }) => !superOnly || esSuperAdmin(rol)).map(({ to, label, end }) => (
                   <NavLink key={to} to={to} end={end} className={linkClass}>
                     {label}
                   </NavLink>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { esAdmin } from '../utils/roles';
 import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
@@ -329,7 +330,7 @@ const DecomisosCargadosPage = () => {
         });
 
         // Filtrar por planta del usuario (si no es admin)
-        if (rol !== 1 && plantaDelUsuario) {
+        if (!esAdmin(rol) && plantaDelUsuario) {
           console.log('[DecomisosCargadosPage] Filtrando por planta del usuario:', plantaDelUsuario);
           const filtrados = agrupados.filter(
             (d) =>
@@ -337,7 +338,7 @@ const DecomisosCargadosPage = () => {
           );
           console.log('[DecomisosCargadosPage] Después de filtrar:', filtrados.length, 'decomisos');
           setDecomisos(filtrados);
-        } else if (rol === 1) {
+        } else if (esAdmin(rol)) {
           console.log('[DecomisosCargadosPage] Admin - mostrando todos los decomisos');
           setDecomisos(agrupados);
         } else {

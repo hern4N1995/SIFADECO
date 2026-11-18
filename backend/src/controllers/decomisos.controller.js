@@ -1,4 +1,5 @@
 const pool = require('../db');
+const { esAdmin } = require('../config/roles');
 
 // 🔍 Cargar combinaciones ya registradas en parte_deco_afeccion
 const obtenerCombinaciones = async (req, res) => {
@@ -123,7 +124,7 @@ const listarDecomisos = async (req, res) => {
     const rolUsuario = Number(req.user?.rol ?? 0);
     const idPlantaUsuario = req.user?.id_planta;
 
-    if (idPlantaUsuario && rolUsuario !== 1 && !String(id_planta).trim()) {
+    if (idPlantaUsuario && !esAdmin(rolUsuario) && !String(id_planta).trim()) {
       conditions.push(`t.id_planta = $${params.length + 1}`);
       params.push(Number(idPlantaUsuario));
     }

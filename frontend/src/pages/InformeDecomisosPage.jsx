@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { esAdmin } from '../utils/roles';
 import { HiArrowLeft } from 'react-icons/hi2';
 import Select from 'react-select';
 import {
@@ -171,7 +172,7 @@ export default function InormeDecomisosPage() {
             console.log('[InormeDecomisosPage] Usuario obtenido:', userData);
             setUser(userData);
             const userRol = parseInt(userData.rol || 0);
-            if (userRol !== 1 && userData.id_planta) {
+            if (!esAdmin(userRol) && userData.id_planta) {
               // No-admin: auto-select their plant
               setIdPlanta(String(userData.id_planta));
             }
@@ -222,7 +223,7 @@ export default function InormeDecomisosPage() {
 
       // Usar planta seleccionada o la del usuario si no es admin
       let plantaAFiltrar = idPlanta;
-      if (!plantaAFiltrar && user?.rol !== 1) {
+      if (!plantaAFiltrar && !esAdmin(user?.rol)) {
         plantaAFiltrar = String(user?.id_planta || '');
       }
 
@@ -281,7 +282,7 @@ export default function InormeDecomisosPage() {
     setIdAfeccion('');
     setDestinoDecomiso('');
 
-    if (user?.rol === 1) {
+    if (esAdmin(user?.rol)) {
       setIdPlanta('');
     } else {
       setIdPlanta(String(user?.id_planta || ''));
@@ -531,7 +532,7 @@ export default function InormeDecomisosPage() {
             />
 
             {/* Planta */}
-            {parseInt(user?.rol || 0) === 1 ? (
+            {esAdmin(user?.rol) ? (
               <SelectField
                 label="Planta"
                 value={

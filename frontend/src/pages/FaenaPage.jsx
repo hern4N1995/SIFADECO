@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Select from 'react-select';
+import { esAdmin } from '../utils/roles';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { isPlainLeftClick } from '../utils/navigation';
@@ -250,7 +251,7 @@ const FaenaPage = () => {
       setLoading(true);
       try {
         // Si es admin, obtener todas las tropas; si no, filtradas por su planta
-        const endpoint = rol === 1 ? '/tropas' : '/tropas/por-planta';
+        const endpoint = esAdmin(rol) ? '/tropas' : '/tropas/por-planta';
         console.log('[FaenaPage] Usando endpoint:', endpoint, 'Rol:', rol);
 
         const res = await api.get(endpoint, { signal: controller.signal });

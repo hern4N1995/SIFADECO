@@ -1,4 +1,5 @@
 const pool = require('../db');
+const { esAdmin } = require('../config/roles');
 
 const EDICION_FAENA_VENTANA_HORAS = 120;
 const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
@@ -102,7 +103,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
   const rolUsuario = req.user?.rol;
   
   // Solo usuarios no-admin (rol !== 1) ven filtrados por su planta
-  if (idPlantaUsuario && rolUsuario !== 1) {
+  if (idPlantaUsuario && !esAdmin(rolUsuario)) {
     valores.push(idPlantaUsuario);
     filtros.push(`t.id_planta = $${valores.length}`);
   }
@@ -394,7 +395,7 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
   const rolUsuario = req.user?.rol;
   
   // Solo usuarios no-admin (rol !== 1) ven filtrados por su planta
-  if (idPlantaUsuario && rolUsuario !== 1) {
+  if (idPlantaUsuario && !esAdmin(rolUsuario)) {
     filtros.push(`t.id_planta = $${valores.length + 1}`);
     valores.push(idPlantaUsuario);
   }
@@ -493,11 +494,11 @@ const obtenerDatosParaDecomiso = async (req, res) => {
       JOIN especie e ON td.id_especie = e.id_especie
       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
       WHERE f.id_faena = $1
-      ${idPlantaUsuario && rolUsuario !== 1 ? `AND t.id_planta = $2` : ''}
+      ${idPlantaUsuario && !esAdmin(rolUsuario) ? `AND t.id_planta = $2` : ''}
     `;
 
     const valores = [id_faena];
-    if (idPlantaUsuario && rolUsuario !== 1) {
+    if (idPlantaUsuario && !esAdmin(rolUsuario)) {
       valores.push(idPlantaUsuario);
     }
 

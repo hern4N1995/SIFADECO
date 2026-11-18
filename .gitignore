@@ -5,3 +5,4 @@ backend/src/db.js
 backend/.env
 backend/src/db.js
 certs/
+.env

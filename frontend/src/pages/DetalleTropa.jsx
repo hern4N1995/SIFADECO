@@ -1,6 +1,7 @@
 // DetalleTropa.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { esAdmin } from '../utils/roles';
 import Select from 'react-select';
 import api from '../services/api';
 import AppNotification from '../components/AppNotification';
@@ -2234,7 +2235,7 @@ export default function DetalleTropa() {
         id_departamento: tropaEdicion.id_departamento,
         id_planta: tropaEdicion.id_planta,
       };
-      
+
       console.log('[DetalleTropa] Payload completo:', payload);
 
       await api.put(`/tropas/${id}`, payload, {
@@ -2409,7 +2410,7 @@ export default function DetalleTropa() {
                 }
                 onChange={(opt) => {
                   // Solo permitir cambio si es admin (rol 1)
-                  if (usuario && usuario.rol === 1) {
+                  if (usuario && esAdmin(usuario.rol)) {
                     setTropaEdicion((prev) => ({
                       ...prev,
                       id_planta: opt?.value || null,
@@ -2421,7 +2422,7 @@ export default function DetalleTropa() {
                   label: p.nombre,
                 }))}
                 placeholder="— Seleccionar planta —"
-                isDisabled={!usuario || (usuario.rol !== 1 && usuario.rol !== '1')}
+                isDisabled={!usuario || !esAdmin(usuario.rol)}
               />
 
               <div className="flex flex-col">

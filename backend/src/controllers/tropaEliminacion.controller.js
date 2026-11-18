@@ -1,5 +1,6 @@
 // controllers/tropaEliminacion.controller.js
 const pool = require('../db');
+const { esAdmin, ROLES } = require('../config/roles');
 
 const obtenerResumenAnimalesTropa = async (client, tropaId) => {
   const result = await client.query(
@@ -56,9 +57,9 @@ exports.solicitarEliminacion = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (![1, 2, 3].includes(Number(rolUsuario))) {
+  if (![ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.USUARIO, ROLES.SUPERADMIN].includes(Number(rolUsuario))) {
     return res.status(403).json({
-      error: 'Solo usuarios con rol 1, 2 o 3 pueden solicitar eliminación de tropas',
+      error: 'Solo usuarios con rol 1, 2, 3 o 4 pueden solicitar eliminación de tropas',
     });
   }
 
@@ -191,7 +192,7 @@ exports.confirmarEliminacion = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (rolUsuario !== 1) {
+  if (!esAdmin(rolUsuario)) {
     return res.status(403).json({
       error: 'Solo administradores (rol 1) pueden confirmar eliminación de tropas',
     });
@@ -346,7 +347,7 @@ exports.obtenerPendientes = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (rolUsuario !== 1) {
+  if (!esAdmin(rolUsuario)) {
     return res.status(403).json({
       error: 'Solo administradores pueden ver tropas pendientes de eliminación',
     });
@@ -403,7 +404,7 @@ exports.obtenerHistorialAuditoria = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (rolUsuario !== 1) {
+  if (!esAdmin(rolUsuario)) {
     return res.status(403).json({
       error: 'Solo administradores pueden ver historial de auditoría',
     });
@@ -452,7 +453,7 @@ exports.cancelarSolicitud = async (req, res) => {
   const rolUsuario = req.user?.rol;
 
   // Validar rol
-  if (rolUsuario !== 1) {
+  if (!esAdmin(rolUsuario)) {
     return res.status(403).json({
       error: 'Solo administradores pueden cancelar solicitudes de eliminación',
     });

@@ -39,6 +39,8 @@ import InformeDecomisosPage from './pages/InformeDecomisosPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import TropasPendientesEliminacion from './pages/TropasPendientesEliminacion.jsx';
+import AuditoriaPage from './pages/AuditoriaPage.jsx';
+import CorreccionesCargaPage from './pages/CorreccionesCargaPage.jsx';
 
 function App() {
   useEffect(() => {
@@ -145,6 +147,26 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1]}>
                 <TropasPendientesEliminacion />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Auditoría general (solo superadmin - rol 4) */}
+          <Route
+            path="admin/auditoria"
+            element={
+              <PrivateRoute allowedRoles={[4]}>
+                <AuditoriaPage />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Correcciones de carga (solo superadmin - rol 4) */}
+          <Route
+            path="admin/correcciones"
+            element={
+              <PrivateRoute allowedRoles={[4]}>
+                <CorreccionesCargaPage />
               </PrivateRoute>
             }
           />
