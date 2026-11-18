@@ -216,6 +216,8 @@ const decomisoDetalleRoutes = loadRoute('./routes/decomisoDetalle.routes');
 const tropaDetalleRoutes = loadRoute('./routes/tropaDetalle.routes');
 const tropaEliminacionRoutes = loadRoute('./routes/tropaEliminacion.routes');
 const diagnosticoRoutes = loadRoute('./routes/diagnostico.routes');
+const auditoriaRoutes = loadRoute('./routes/auditoria.routes');
+const correccionesRoutes = loadRoute('./routes/correcciones.routes');
 
 /* ---------------------------
    App y CORS manual
@@ -323,6 +325,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // 2. Sanitización de entrada - Limpiar datos peligrosos
 app.use(securityMiddleware.sanitizeInput);
+
+// 2b. Auditoría de escrituras (POST/PUT/PATCH/DELETE) sobre /api
+app.use(require('./middleware/auditoria'));
 
 // 3. Headers de seguridad
 app.use((req, res, next) => {
@@ -437,6 +442,11 @@ safeMount(
   tropaEliminacionRoutes,
   './routes/tropaEliminacion.routes',
 );
+
+// Auditoría general (solo superadmin)
+safeMount(app, '/api/auditoria', auditoriaRoutes, './routes/auditoria.routes');
+// Correcciones de carga (solo superadmin)
+safeMount(app, '/api/correcciones', correccionesRoutes, './routes/correcciones.routes');
 
 // Montar diagnosticoRoutes para debugging
 safeMount(

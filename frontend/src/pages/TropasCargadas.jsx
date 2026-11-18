@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { esAdmin } from '../utils/roles';
 import Select from 'react-select';
 import api from '../services/api.js';
 import { formatDateFromDB } from '../utils/dateFormatter';
@@ -214,7 +215,7 @@ export default function TropasCargadas() {
         let arr = Array.isArray(resT.data) ? resT.data : [];
         
         // Filtrar por planta del usuario (si no es admin)
-        if (rol !== 1 && plantaDelUsuario) {
+        if (!esAdmin(rol) && plantaDelUsuario) {
           console.log('[TropasCargadas] Filtrando por planta del usuario:', plantaDelUsuario);
           arr = arr.filter((t) => {
             const tPlanta =
@@ -227,7 +228,7 @@ export default function TropasCargadas() {
             return String(tPlanta) === String(plantaDelUsuario);
           });
           console.log('[TropasCargadas] Después de filtrar:', arr.length, 'tropas');
-        } else if (rol === 1) {
+        } else if (esAdmin(rol)) {
           console.log('[TropasCargadas] Admin - mostrando todas las tropas');
         }
 
@@ -289,7 +290,7 @@ export default function TropasCargadas() {
     let filtered = allTropas.slice();
 
     // Filtrar por planta solo si NO es admin
-    if (rol !== 1 && plantaDelUsuario != null) {
+    if (!esAdmin(rol) && plantaDelUsuario != null) {
       console.log('[TropasCargadas] Filtrando por planta del usuario:', plantaDelUsuario, 'Rol:', rol);
       filtered = filtered.filter((t) => {
         const tPlanta =
@@ -300,7 +301,7 @@ export default function TropasCargadas() {
         if (tPlanta == null) return false;
         return String(tPlanta) === String(plantaDelUsuario);
       });
-    } else if (rol === 1) {
+    } else if (esAdmin(rol)) {
       console.log('[TropasCargadas] Admin - mostrando todas las tropas');
     }
 
@@ -469,7 +470,7 @@ export default function TropasCargadas() {
   const RowActions = ({ tropa }) => {
     // Si no hay estado o es null, lo consideramos como 'activa'
     const estado = tropa.estado || 'activa';
-    const canDelete = (rol === 1 || rol === 2 || rol === 3) && estado === 'activa';
+    const canDelete = (esAdmin(rol) || rol === 2 || rol === 3) && estado === 'activa';
     const isPending = estado === 'pendiente_eliminacion';
     
     return (
@@ -663,7 +664,7 @@ export default function TropasCargadas() {
                     <tr>
                       <th className="px-2 sm:px-3 py-2 text-left">N° Tropa</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Fecha</th>
-                      {rol === 1 && (
+                      {esAdmin(rol) && (
                         <th className="px-2 sm:px-3 py-2 text-left">Planta</th>
                       )}
                       <th className="px-2 sm:px-3 py-2 text-center">Cant. Tropa</th>
@@ -695,7 +696,7 @@ export default function TropasCargadas() {
                           <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
                             {formatDateFromDB(tropa.fecha_ingreso)}
                           </td>
-                          {rol === 1 && (
+                          {esAdmin(rol) && (
                             <td className={`px-2 sm:px-3 py-2 ${isPending ? 'line-through text-yellow-700' : ''}`}>
                               {plantaLabel(tropa)}
                             </td>
@@ -762,7 +763,7 @@ export default function TropasCargadas() {
                         </div>
                       </div>
 
-                      {rol === 1 && (
+                      {esAdmin(rol) && (
                         <div className="flex items-start space-x-1">
                           <span className="text-gray-400 text-[11px] mt-0.5">
                             🏭
@@ -926,7 +927,7 @@ export default function TropasCargadas() {
                       <li>Esto solicitará la eliminación de <strong>TODA</strong> la tropa</li>
                       <li>Se eliminarán todas las faenas asociadas a esta tropa</li>
                       <li>Se eliminarán todos los decomisos de esas faenas</li>
-                      <li>{rol === 1 ? 'Otro administrador debe confirmar esta acción' : 'Un administrador debe confirmar esta acción'}</li>
+                      <li>{esAdmin(rol) ? 'Otro administrador debe confirmar esta acción' : 'Un administrador debe confirmar esta acción'}</li>
                       <li>Mientras se procesa, la tropa aparecerá marcada en amarillo</li>
                     </ul>
                   </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
+import { esAdmin } from '../utils/roles';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { formatDateFromDB } from '../utils/dateFormatter';
@@ -195,14 +196,14 @@ export default function FaenasADecomisar() {
       let arr = Array.isArray(data) ? data : Array.isArray(data?.faenas) ? data.faenas : [];
       
       // Filtrar por planta del usuario (si no es admin)
-      if (rol !== 1 && plantaDelUsuario) {
+      if (!esAdmin(rol) && plantaDelUsuario) {
         console.log('[FaenasADecomisar] Filtrando por planta del usuario:', plantaDelUsuario);
         arr = arr.filter(
           (f) =>
             String(f.id_planta) === String(plantaDelUsuario)
         );
         console.log('[FaenasADecomisar] Después de filtrar:', arr.length, 'faenas');
-      } else if (rol === 1) {
+      } else if (esAdmin(rol)) {
         console.log('[FaenasADecomisar] Admin - mostrando todas las faenas');
       }
       
